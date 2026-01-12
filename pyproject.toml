@@ -1,0 +1,25 @@
+[project]
+name = "rlm-self-distill"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "rlm",
+    "ollama",
+    "polars",
+    "mlflow>=2.0",
+    "reportlab>=4.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+]
+
+[tool.uv.sources]
+rlm = { git = "https://github.com/eddiestudies/rlmr.git", rev = "18a936836103b62ed35770ed7001c22f114aea9a" }
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
