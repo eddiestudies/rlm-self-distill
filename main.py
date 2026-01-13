@@ -41,7 +41,9 @@ Examples:
         "--experiment", "-e", choices=EXPERIMENTS.keys(), help="Experiment to run"
     )
     parser.add_argument(
-        "--model", default="llama3.2:3b", help="Ollama model name (default: llama3.2:3b)"
+        "--model",
+        default="llama3.2:3b",
+        help="Ollama model name (default: llama3.2:3b)",
     )
     parser.add_argument(
         "--cola", type=int, default=50, help="Number of CoLA samples (default: 50)"
@@ -75,9 +77,12 @@ Examples:
     cmd = [
         sys.executable,
         str(script),
-        "--model", args.model,
-        "--cola", str(args.cola),
-        "--pii", str(args.pii),
+        "--model",
+        args.model,
+        "--cola",
+        str(args.cola),
+        "--pii",
+        str(args.pii),
     ]
 
     print(f"Running: {args.experiment}")

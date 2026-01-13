@@ -218,7 +218,9 @@ class ExperimentTracker:
             if len(indices) <= 10:
                 params["dataset_indices"] = str(indices)
             else:
-                params["dataset_indices_sample"] = str(indices[:5] + ["..."] + indices[-5:])
+                params["dataset_indices_sample"] = str(
+                    indices[:5] + ["..."] + indices[-5:]
+                )
 
         if size is not None:
             params["dataset_size"] = size
@@ -339,8 +341,12 @@ class ExperimentTracker:
             return
 
         # Call type breakdown
-        rule_creation_calls = [c for c in self._calls if c.call_type == CallType.RULE_CREATION]
-        rule_usage_calls = [c for c in self._calls if c.call_type == CallType.RULE_USAGE]
+        rule_creation_calls = [
+            c for c in self._calls if c.call_type == CallType.RULE_CREATION
+        ]
+        rule_usage_calls = [
+            c for c in self._calls if c.call_type == CallType.RULE_USAGE
+        ]
         no_rule_calls = [c for c in self._calls if c.call_type == CallType.NO_RULE]
 
         metrics = {
@@ -357,22 +363,32 @@ class ExperimentTracker:
             # Rule stats
             "final_rules_created": len(self._rules),
             "final_total_rule_usages": sum(r.times_used for r in self._rules.values()),
-            "final_tokens_saved_by_rules": sum(r.tokens_saved for r in self._rules.values()),
+            "final_tokens_saved_by_rules": sum(
+                r.tokens_saved for r in self._rules.values()
+            ),
         }
 
         # Average tokens per call type
         if rule_creation_calls:
-            metrics["avg_tokens_rule_creation"] = sum(c.total_tokens for c in rule_creation_calls) / len(rule_creation_calls)
+            metrics["avg_tokens_rule_creation"] = sum(
+                c.total_tokens for c in rule_creation_calls
+            ) / len(rule_creation_calls)
         if rule_usage_calls:
-            metrics["avg_tokens_rule_usage"] = sum(c.total_tokens for c in rule_usage_calls) / len(rule_usage_calls)
+            metrics["avg_tokens_rule_usage"] = sum(
+                c.total_tokens for c in rule_usage_calls
+            ) / len(rule_usage_calls)
         if no_rule_calls:
-            metrics["avg_tokens_no_rule"] = sum(c.total_tokens for c in no_rule_calls) / len(no_rule_calls)
+            metrics["avg_tokens_no_rule"] = sum(
+                c.total_tokens for c in no_rule_calls
+            ) / len(no_rule_calls)
 
         # Rule overhead percentage
         total_tokens = sum(c.total_tokens for c in self._calls)
         if total_tokens > 0:
             rule_token_overhead = sum(c.rule_tokens for c in self._calls)
-            metrics["rule_token_overhead_pct"] = (rule_token_overhead / total_tokens) * 100
+            metrics["rule_token_overhead_pct"] = (
+                rule_token_overhead / total_tokens
+            ) * 100
 
         mlflow.log_metrics(metrics)
 
@@ -398,7 +414,9 @@ class ExperimentTracker:
                 for c in self._calls
             ]
 
-            with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            with tempfile.NamedTemporaryFile(
+                mode="w", suffix=".json", delete=False
+            ) as f:
                 json.dump(calls_data, f, indent=2)
                 temp_path = f.name
 
@@ -417,7 +435,9 @@ class ExperimentTracker:
                 for rule_id, stats in self._rules.items()
             }
 
-            with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            with tempfile.NamedTemporaryFile(
+                mode="w", suffix=".json", delete=False
+            ) as f:
                 json.dump(rules_data, f, indent=2)
                 temp_path = f.name
 
@@ -426,7 +446,9 @@ class ExperimentTracker:
 
         # Log dataset indices if available
         if self._dataset_indices:
-            with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            with tempfile.NamedTemporaryFile(
+                mode="w", suffix=".json", delete=False
+            ) as f:
                 json.dump(self._dataset_indices, f)
                 temp_path = f.name
 
@@ -528,9 +550,15 @@ class ExperimentTracker:
         """Get a summary of the current run state."""
         return {
             "total_calls": len(self._calls),
-            "rule_creation_calls": len([c for c in self._calls if c.call_type == CallType.RULE_CREATION]),
-            "rule_usage_calls": len([c for c in self._calls if c.call_type == CallType.RULE_USAGE]),
-            "no_rule_calls": len([c for c in self._calls if c.call_type == CallType.NO_RULE]),
+            "rule_creation_calls": len(
+                [c for c in self._calls if c.call_type == CallType.RULE_CREATION]
+            ),
+            "rule_usage_calls": len(
+                [c for c in self._calls if c.call_type == CallType.RULE_USAGE]
+            ),
+            "no_rule_calls": len(
+                [c for c in self._calls if c.call_type == CallType.NO_RULE]
+            ),
             "total_tokens": sum(c.total_tokens for c in self._calls),
             "rule_tokens": sum(c.rule_tokens for c in self._calls),
             "rules_created": len(self._rules),

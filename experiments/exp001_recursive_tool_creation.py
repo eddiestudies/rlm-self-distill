@@ -53,6 +53,7 @@ For the task itself, provide your answer after any tool definitions."""
 
 # === Data Classes ===
 
+
 @dataclass
 class TaskItem:
     """A unified task item from mixed datasets."""
@@ -109,6 +110,7 @@ class ExperimentResult:
 
 
 # === Helper Functions ===
+
 
 def load_mixed_dataset(
     cola_split: str = "train",
@@ -213,6 +215,7 @@ def estimate_tokens(text: str) -> int:
 
 
 # === Output Management ===
+
 
 class ExperimentOutputManager:
     """Manages experiment output directories and files."""
@@ -322,7 +325,12 @@ class ExperimentOutputManager:
         )
         story.append(Paragraph("Experiment 001: Recursive Tool Creation", title_style))
         story.append(Paragraph(f"Run ID: {self.run_id}", styles["Normal"]))
-        story.append(Paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", styles["Normal"]))
+        story.append(
+            Paragraph(
+                f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+                styles["Normal"],
+            )
+        )
         story.append(Spacer(1, 0.3 * inch))
 
         # Executive Summary
@@ -338,29 +346,52 @@ class ExperimentOutputManager:
 
         summary_data = [
             ["Metric", "Baseline", "With Tools", "Direct LM"],
-            ["Total Tokens", f"{baseline_tokens:,}", f"{tools_tokens:,}", f"{direct_tokens:,}"],
-            ["Total Tasks", str(len(baseline.get("results", []))), str(len(with_tools.get("results", []))), str(len(direct_lm.get("results", [])))],
+            [
+                "Total Tokens",
+                f"{baseline_tokens:,}",
+                f"{tools_tokens:,}",
+                f"{direct_tokens:,}",
+            ],
+            [
+                "Total Tasks",
+                str(len(baseline.get("results", []))),
+                str(len(with_tools.get("results", []))),
+                str(len(direct_lm.get("results", []))),
+            ],
         ]
 
         if baseline_tokens > 0 and tools_tokens > 0:
             savings = baseline_tokens - tools_tokens
             savings_pct = (savings / baseline_tokens) * 100
-            summary_data.append(["Token Savings vs Baseline", "-", f"{savings:,} ({savings_pct:.1f}%)", "-"])
+            summary_data.append(
+                [
+                    "Token Savings vs Baseline",
+                    "-",
+                    f"{savings:,} ({savings_pct:.1f}%)",
+                    "-",
+                ]
+            )
 
         tools_created = with_tools.get("tools_created", [])
         summary_data.append(["Tools Created", "0", str(len(tools_created)), "0"])
 
-        summary_table = Table(summary_data, colWidths=[2 * inch, 1.5 * inch, 1.5 * inch, 1.5 * inch])
-        summary_table.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
-            ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
-            ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-            ("FONTSIZE", (0, 0), (-1, 0), 10),
-            ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
-            ("BACKGROUND", (0, 1), (-1, -1), colors.beige),
-            ("GRID", (0, 0), (-1, -1), 1, colors.black),
-        ]))
+        summary_table = Table(
+            summary_data, colWidths=[2 * inch, 1.5 * inch, 1.5 * inch, 1.5 * inch]
+        )
+        summary_table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                    ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, 0), 10),
+                    ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
+                    ("BACKGROUND", (0, 1), (-1, -1), colors.beige),
+                    ("GRID", (0, 0), (-1, -1), 1, colors.black),
+                ]
+            )
+        )
         story.append(summary_table)
         story.append(Spacer(1, 0.3 * inch))
 
@@ -380,9 +411,13 @@ class ExperimentOutputManager:
                     tool_desc = tool.description
                     tool_impl = tool.implementation[:200]
 
-                story.append(Paragraph(f"<b>{tool_name}</b> ({tool_type})", styles["Normal"]))
+                story.append(
+                    Paragraph(f"<b>{tool_name}</b> ({tool_type})", styles["Normal"])
+                )
                 story.append(Paragraph(f"Description: {tool_desc}", styles["Normal"]))
-                story.append(Paragraph(f"Implementation: {tool_impl}...", styles["Normal"]))
+                story.append(
+                    Paragraph(f"Implementation: {tool_impl}...", styles["Normal"])
+                )
                 story.append(Spacer(1, 0.1 * inch))
 
             story.append(Spacer(1, 0.2 * inch))
@@ -403,9 +438,19 @@ class ExperimentOutputManager:
                 if results_list:
                     total_input = sum(r.get("input_tokens", 0) for r in results_list)
                     total_output = sum(r.get("output_tokens", 0) for r in results_list)
-                    story.append(Paragraph(f"  Input tokens: {total_input:,}", styles["Normal"]))
-                    story.append(Paragraph(f"  Output tokens: {total_output:,}", styles["Normal"]))
-                    story.append(Paragraph(f"  Total: {total_input + total_output:,}", styles["Normal"]))
+                    story.append(
+                        Paragraph(f"  Input tokens: {total_input:,}", styles["Normal"])
+                    )
+                    story.append(
+                        Paragraph(
+                            f"  Output tokens: {total_output:,}", styles["Normal"]
+                        )
+                    )
+                    story.append(
+                        Paragraph(
+                            f"  Total: {total_input + total_output:,}", styles["Normal"]
+                        )
+                    )
                 story.append(Spacer(1, 0.1 * inch))
 
         # Per-Task Analysis
@@ -418,22 +463,50 @@ class ExperimentOutputManager:
             direct_results = direct_lm.get("results", [])
 
             for i in range(min(10, len(baseline_results))):  # Show first 10
-                b_tokens = baseline_results[i].get("input_tokens", 0) + baseline_results[i].get("output_tokens", 0) if i < len(baseline_results) else 0
-                t_tokens = tools_results[i].get("input_tokens", 0) + tools_results[i].get("output_tokens", 0) if i < len(tools_results) else 0
-                d_tokens = direct_results[i].get("input_tokens", 0) + direct_results[i].get("output_tokens", 0) if i < len(direct_results) else 0
-                task_type = baseline_results[i].get("dataset_type", "unknown") if i < len(baseline_results) else "?"
+                b_tokens = (
+                    baseline_results[i].get("input_tokens", 0)
+                    + baseline_results[i].get("output_tokens", 0)
+                    if i < len(baseline_results)
+                    else 0
+                )
+                t_tokens = (
+                    tools_results[i].get("input_tokens", 0)
+                    + tools_results[i].get("output_tokens", 0)
+                    if i < len(tools_results)
+                    else 0
+                )
+                d_tokens = (
+                    direct_results[i].get("input_tokens", 0)
+                    + direct_results[i].get("output_tokens", 0)
+                    if i < len(direct_results)
+                    else 0
+                )
+                task_type = (
+                    baseline_results[i].get("dataset_type", "unknown")
+                    if i < len(baseline_results)
+                    else "?"
+                )
 
-                task_data.append([str(i + 1), task_type, str(b_tokens), str(t_tokens), str(d_tokens)])
+                task_data.append(
+                    [str(i + 1), task_type, str(b_tokens), str(t_tokens), str(d_tokens)]
+                )
 
-            task_table = Table(task_data, colWidths=[0.7 * inch, 0.8 * inch, 1.2 * inch, 1.2 * inch, 1.2 * inch])
-            task_table.setStyle(TableStyle([
-                ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
-                ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
-                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                ("FONTSIZE", (0, 0), (-1, -1), 8),
-                ("GRID", (0, 0), (-1, -1), 1, colors.black),
-            ]))
+            task_table = Table(
+                task_data,
+                colWidths=[0.7 * inch, 0.8 * inch, 1.2 * inch, 1.2 * inch, 1.2 * inch],
+            )
+            task_table.setStyle(
+                TableStyle(
+                    [
+                        ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
+                        ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                        ("FONTSIZE", (0, 0), (-1, -1), 8),
+                        ("GRID", (0, 0), (-1, -1), 1, colors.black),
+                    ]
+                )
+            )
             story.append(task_table)
 
         # Build PDF
@@ -442,6 +515,7 @@ class ExperimentOutputManager:
 
 
 # === Main Experiment ===
+
 
 class RecursiveToolExperiment:
     """
@@ -519,18 +593,22 @@ class RecursiveToolExperiment:
                     dataset_index=i,
                 )
 
-                results.append({
-                    "task_index": i,
-                    "dataset_type": task.dataset_type,
-                    "input_tokens": input_tokens,
-                    "output_tokens": output_tokens,
-                    "response": response,
-                    "expected": task.expected_answer,
-                })
+                results.append(
+                    {
+                        "task_index": i,
+                        "dataset_type": task.dataset_type,
+                        "input_tokens": input_tokens,
+                        "output_tokens": output_tokens,
+                        "response": response,
+                        "expected": task.expected_answer,
+                    }
+                )
 
         return {
             "results": results,
-            "total_tokens": sum(r["input_tokens"] + r["output_tokens"] for r in results),
+            "total_tokens": sum(
+                r["input_tokens"] + r["output_tokens"] for r in results
+            ),
             "summary": self.tracker.get_summary(),
         }
 
@@ -555,7 +633,10 @@ class RecursiveToolExperiment:
                 prompt = format_task_prompt(task)
 
                 messages = [
-                    {"role": "system", "content": "You are a helpful assistant. Answer the task accurately and concisely."},
+                    {
+                        "role": "system",
+                        "content": "You are a helpful assistant. Answer the task accurately and concisely.",
+                    },
                     {"role": "user", "content": prompt},
                 ]
 
@@ -572,18 +653,22 @@ class RecursiveToolExperiment:
                     dataset_index=i,
                 )
 
-                results.append({
-                    "task_index": i,
-                    "dataset_type": task.dataset_type,
-                    "input_tokens": input_tokens,
-                    "output_tokens": output_tokens,
-                    "response": response,
-                    "expected": task.expected_answer,
-                })
+                results.append(
+                    {
+                        "task_index": i,
+                        "dataset_type": task.dataset_type,
+                        "input_tokens": input_tokens,
+                        "output_tokens": output_tokens,
+                        "response": response,
+                        "expected": task.expected_answer,
+                    }
+                )
 
         return {
             "results": results,
-            "total_tokens": sum(r["input_tokens"] + r["output_tokens"] for r in results),
+            "total_tokens": sum(
+                r["input_tokens"] + r["output_tokens"] for r in results
+            ),
             "summary": self.tracker.get_summary(),
         }
 
@@ -597,7 +682,9 @@ class RecursiveToolExperiment:
         self.tools = {}
         self.tool_usage_counts = {}
 
-        with self.tracker.start_run(run_name=run_name, tags={"mode": "recursive_tools"}):
+        with self.tracker.start_run(
+            run_name=run_name, tags={"mode": "recursive_tools"}
+        ):
             self.tracker.log_model_params(
                 model_name=self.model_name,
                 mode="recursive_tools",
@@ -610,7 +697,9 @@ class RecursiveToolExperiment:
                 size=len(tasks),
             )
 
-            pbar = tqdm(enumerate(tasks), total=len(tasks), desc="With Tools", unit="task")
+            pbar = tqdm(
+                enumerate(tasks), total=len(tasks), desc="With Tools", unit="task"
+            )
             for i, task in pbar:
                 # Build context with available tools
                 system_prompt = self._build_system_with_tools()
@@ -677,7 +766,8 @@ class RecursiveToolExperiment:
                     call_type = CallType.RULE_USAGE
                     rule_tokens = sum(
                         estimate_tokens(self.tools[t].implementation)
-                        for t in tools_used if t in self.tools
+                        for t in tools_used
+                        if t in self.tools
                     )
                 else:
                     call_type = CallType.NO_RULE
@@ -692,22 +782,28 @@ class RecursiveToolExperiment:
                         dataset_index=i,
                     )
 
-                results.append({
-                    "task_index": i,
-                    "dataset_type": task.dataset_type,
-                    "input_tokens": input_tokens,
-                    "output_tokens": output_tokens,
-                    "tools_created": tools_created_this_task,
-                    "tools_used": tools_used,
-                    "response": response,
-                    "expected": task.expected_answer,
-                })
+                results.append(
+                    {
+                        "task_index": i,
+                        "dataset_type": task.dataset_type,
+                        "input_tokens": input_tokens,
+                        "output_tokens": output_tokens,
+                        "tools_created": tools_created_this_task,
+                        "tools_used": tools_used,
+                        "response": response,
+                        "expected": task.expected_answer,
+                    }
+                )
 
-                pbar.set_postfix(tools=len(self.tools), tokens=input_tokens + output_tokens)
+                pbar.set_postfix(
+                    tools=len(self.tools), tokens=input_tokens + output_tokens
+                )
 
         return {
             "results": results,
-            "total_tokens": sum(r["input_tokens"] + r["output_tokens"] for r in results),
+            "total_tokens": sum(
+                r["input_tokens"] + r["output_tokens"] for r in results
+            ),
             "tools_created": [t.to_dict() for t in self.tools.values()],
             "tool_usage_counts": self.tool_usage_counts.copy(),
             "summary": self.tracker.get_summary(),
@@ -724,11 +820,17 @@ class RecursiveToolExperiment:
         """
         results = []
 
-        with self.tracker.start_run(run_name=run_name, tags={"mode": "throwaway_measurement"}):
-            self.tracker.log_model_params(model_name=self.model_name, mode="throwaway_measurement")
+        with self.tracker.start_run(
+            run_name=run_name, tags={"mode": "throwaway_measurement"}
+        ):
+            self.tracker.log_model_params(
+                model_name=self.model_name, mode="throwaway_measurement"
+            )
 
             for i, task in enumerate(tqdm(tasks, desc="Classifier", unit="task")):
-                classifier_prompt = f"Classify in one word (cola/pii/other): '{task.text[:100]}'"
+                classifier_prompt = (
+                    f"Classify in one word (cola/pii/other): '{task.text[:100]}'"
+                )
 
                 messages = [
                     {"role": "system", "content": "Respond with only one word."},
@@ -738,11 +840,14 @@ class RecursiveToolExperiment:
                 response = self.client.completion(messages)
                 usage = self.client.get_last_usage()
 
-                results.append({
-                    "task_index": i,
-                    "classification_tokens": usage.total_input_tokens + usage.total_output_tokens,
-                    "response": response,
-                })
+                results.append(
+                    {
+                        "task_index": i,
+                        "classification_tokens": usage.total_input_tokens
+                        + usage.total_output_tokens,
+                        "response": response,
+                    }
+                )
 
                 self.tracker.track_call(
                     CallType.NO_RULE,
@@ -754,7 +859,10 @@ class RecursiveToolExperiment:
         return {
             "results": results,
             "total_classifier_tokens": sum(r["classification_tokens"] for r in results),
-            "avg_classifier_tokens": sum(r["classification_tokens"] for r in results) / len(results) if results else 0,
+            "avg_classifier_tokens": sum(r["classification_tokens"] for r in results)
+            / len(results)
+            if results
+            else 0,
         }
 
 
@@ -809,7 +917,9 @@ def run_full_experiment(
     print("\n" + "-" * 40)
     print("Running THROWAWAY TOKEN MEASUREMENT...")
     print("-" * 40)
-    throwaway_results = experiment.run_throwaway_token_measurement(tasks, run_name="exp001_throwaway")
+    throwaway_results = experiment.run_throwaway_token_measurement(
+        tasks, run_name="exp001_throwaway"
+    )
 
     # Compile all results
     all_results = {
@@ -853,7 +963,9 @@ def run_full_experiment(
     print(f"\nDirect LM total tokens: {direct_results['total_tokens']:,}")
     print(f"Baseline total tokens: {baseline_results['total_tokens']:,}")
     print(f"With tools total tokens: {tools_results['total_tokens']:,}")
-    print(f"Throwaway classifier tokens: {throwaway_results['total_classifier_tokens']:,}")
+    print(
+        f"Throwaway classifier tokens: {throwaway_results['total_classifier_tokens']:,}"
+    )
 
     if tools_results["tools_created"]:
         print(f"\nTools created: {len(tools_results['tools_created'])}")
@@ -863,9 +975,13 @@ def run_full_experiment(
 
     token_diff = baseline_results["total_tokens"] - tools_results["total_tokens"]
     if token_diff > 0:
-        print(f"\nToken savings with tools vs baseline: {token_diff:,} ({token_diff/baseline_results['total_tokens']*100:.1f}%)")
+        print(
+            f"\nToken savings with tools vs baseline: {token_diff:,} ({token_diff / baseline_results['total_tokens'] * 100:.1f}%)"
+        )
     else:
-        print(f"\nToken overhead with tools vs baseline: {-token_diff:,} ({-token_diff/baseline_results['total_tokens']*100:.1f}%)")
+        print(
+            f"\nToken overhead with tools vs baseline: {-token_diff:,} ({-token_diff / baseline_results['total_tokens'] * 100:.1f}%)"
+        )
 
     print(f"\nPDF Report: {pdf_path}")
     print("MLflow UI: http://localhost:5000")
@@ -881,10 +997,16 @@ def run_full_experiment(
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description="Run recursive tool creation experiment")
+    parser = argparse.ArgumentParser(
+        description="Run recursive tool creation experiment"
+    )
     parser.add_argument("--model", default="llama3.2", help="Ollama model name")
-    parser.add_argument("--cola-limit", type=int, default=20, help="Number of CoLA samples")
-    parser.add_argument("--pii-limit", type=int, default=10, help="Number of PII samples")
+    parser.add_argument(
+        "--cola-limit", type=int, default=20, help="Number of CoLA samples"
+    )
+    parser.add_argument(
+        "--pii-limit", type=int, default=10, help="Number of PII samples"
+    )
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
 
     args = parser.parse_args()

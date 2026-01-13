@@ -41,9 +41,11 @@ from experiments.exp001_recursive_tool_creation import TaskItem
 
 # === Tool Infrastructure ===
 
+
 @dataclass
 class ToolResult:
     """Result from executing a tool."""
+
     success: bool
     output: Any
     error: str | None = None
@@ -53,6 +55,7 @@ class ToolResult:
 @dataclass
 class ExecutableTool:
     """An executable Python tool."""
+
     name: str
     tool_type: str  # "classifier", "grammar", "pii"
     description: str
@@ -120,7 +123,9 @@ class ToolRegistry:
     def execute_tool(self, tool_name: str, input_text: str) -> ToolResult:
         """Execute a tool on input text."""
         if tool_name not in self.tools:
-            return ToolResult(success=False, output=None, error=f"Tool {tool_name} not found")
+            return ToolResult(
+                success=False, output=None, error=f"Tool {tool_name} not found"
+            )
 
         tool = self.tools[tool_name]
         tool.executions += 1
@@ -129,8 +134,10 @@ class ToolRegistry:
             module = self._load_module(tool)
 
             # All tools should have a 'run' function
-            if not hasattr(module, 'run'):
-                return ToolResult(success=False, output=None, error="Tool has no 'run' function")
+            if not hasattr(module, "run"):
+                return ToolResult(
+                    success=False, output=None, error="Tool has no 'run' function"
+                )
 
             result = module.run(input_text)
             return ToolResult(success=True, output=result)
@@ -140,7 +147,7 @@ class ToolRegistry:
             return ToolResult(
                 success=False,
                 output=None,
-                error=f"{type(e).__name__}: {str(e)}\n{traceback.format_exc()}"
+                error=f"{type(e).__name__}: {str(e)}\n{traceback.format_exc()}",
             )
 
     def get_tools_by_type(self, tool_type: str) -> list[ExecutableTool]:
@@ -211,6 +218,7 @@ Output only the Python code:"""
 
 # === Main Experiment ===
 
+
 class ExecutableToolExperiment:
     """Experiment with actual executable Python tools."""
 
@@ -266,7 +274,7 @@ class ExecutableToolExperiment:
 
         # Determine file path
         subdir = self.tools_dir / tool_type
-        safe_name = re.sub(r'[^a-zA-Z0-9_]', '_', tool_name.lower())
+        safe_name = re.sub(r"[^a-zA-Z0-9_]", "_", tool_name.lower())
         file_path = subdir / f"{safe_name}.py"
 
         tool = ExecutableTool(
@@ -298,7 +306,9 @@ class ExecutableToolExperiment:
 
         # 2. Basic grammar checker
         self.create_tool_from_llm(
-            GRAMMAR_TOOL_PROMPT.format(issue="basic sentence structure - check if sentence has subject and verb"),
+            GRAMMAR_TOOL_PROMPT.format(
+                issue="basic sentence structure - check if sentence has subject and verb"
+            ),
             "basic_grammar",
             "grammar",
             "Checks basic sentence structure",
@@ -362,7 +372,9 @@ class ExecutableToolExperiment:
                 self.tool_failures += 1
 
         # No tools worked
-        return ToolResult(success=False, output=None, error="No grammar tools succeeded")
+        return ToolResult(
+            success=False, output=None, error="No grammar tools succeeded"
+        )
 
     def run_pii_tools(self, text: str) -> ToolResult:
         """Run all PII tools and aggregate results."""
@@ -439,7 +451,9 @@ class ExecutableToolExperiment:
 
         for i, task in enumerate(tqdm(tasks, desc="Baseline", unit="task")):
             if task.dataset_type == "cola":
-                prompt = f'Is this grammatically acceptable? Answer 0 or 1: "{task.text}"'
+                prompt = (
+                    f'Is this grammatically acceptable? Answer 0 or 1: "{task.text}"'
+                )
             else:
                 prompt = f'List PII as JSON: "{task.text}"'
 
@@ -448,12 +462,14 @@ class ExecutableToolExperiment:
             tokens = usage.total_input_tokens + usage.total_output_tokens
             total_tokens += tokens
 
-            results.append({
-                "task_index": i,
-                "dataset_type": task.dataset_type,
-                "tokens": tokens,
-                "response": response[:100],
-            })
+            results.append(
+                {
+                    "task_index": i,
+                    "dataset_type": task.dataset_type,
+                    "tokens": tokens,
+                    "response": response[:100],
+                }
+            )
 
         return {"results": results, "total_tokens": total_tokens}
 
@@ -482,21 +498,35 @@ class ExecutableToolExperiment:
             "llm_fallbacks": self.llm_fallbacks,
         }
 
-    def generate_report(self, baseline: dict, with_tools: dict, tasks: list[TaskItem]) -> Path:
+    def generate_report(
+        self, baseline: dict, with_tools: dict, tasks: list[TaskItem]
+    ) -> Path:
         """Generate PDF report."""
         from reportlab.lib import colors
         from reportlab.lib.pagesizes import letter
         from reportlab.lib.styles import getSampleStyleSheet
         from reportlab.lib.units import inch
-        from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+        from reportlab.platypus import (
+            Paragraph,
+            SimpleDocTemplate,
+            Spacer,
+            Table,
+            TableStyle,
+        )
 
         filepath = self.run_dir / "report.pdf"
         doc = SimpleDocTemplate(str(filepath), pagesize=letter)
         styles = getSampleStyleSheet()
         story = []
 
-        story.append(Paragraph("Experiment 003: Executable Python Tools", styles["Heading1"]))
-        story.append(Paragraph(f"Model: {self.model_name} | Tasks: {len(tasks)}", styles["Normal"]))
+        story.append(
+            Paragraph("Experiment 003: Executable Python Tools", styles["Heading1"])
+        )
+        story.append(
+            Paragraph(
+                f"Model: {self.model_name} | Tasks: {len(tasks)}", styles["Normal"]
+            )
+        )
         story.append(Spacer(1, 0.2 * inch))
 
         # Summary
@@ -515,14 +545,18 @@ class ExecutableToolExperiment:
             ["Savings", "-", f"{savings:,} ({savings_pct:+.1f}%)"],
         ]
 
-        table = Table(data, colWidths=[2*inch, 1.5*inch, 1.5*inch])
-        table.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
-            ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
-            ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-            ("GRID", (0, 0), (-1, -1), 1, colors.black),
-            ("BACKGROUND", (0, 1), (-1, -1), colors.beige),
-        ]))
+        table = Table(data, colWidths=[2 * inch, 1.5 * inch, 1.5 * inch])
+        table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                    ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                    ("GRID", (0, 0), (-1, -1), 1, colors.black),
+                    ("BACKGROUND", (0, 1), (-1, -1), colors.beige),
+                ]
+            )
+        )
         story.append(table)
         story.append(Spacer(1, 0.2 * inch))
 
@@ -537,27 +571,35 @@ class ExecutableToolExperiment:
             ["LLM Fallbacks", str(with_tools["llm_fallbacks"])],
         ]
 
-        tool_table = Table(tool_data, colWidths=[2*inch, 1.5*inch])
-        tool_table.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
-            ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
-            ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-            ("GRID", (0, 0), (-1, -1), 1, colors.black),
-        ]))
+        tool_table = Table(tool_data, colWidths=[2 * inch, 1.5 * inch])
+        tool_table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                    ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                    ("GRID", (0, 0), (-1, -1), 1, colors.black),
+                ]
+            )
+        )
         story.append(tool_table)
         story.append(Spacer(1, 0.2 * inch))
 
         # Tools created
         story.append(Paragraph("Tools Created", styles["Heading2"]))
         for tool in self.registry.tools.values():
-            story.append(Paragraph(
-                f"<b>{tool.name}</b> ({tool.tool_type}): {tool.description}",
-                styles["Normal"]
-            ))
-            story.append(Paragraph(
-                f"  Executions: {tool.executions}, Failures: {tool.failures}",
-                styles["Normal"]
-            ))
+            story.append(
+                Paragraph(
+                    f"<b>{tool.name}</b> ({tool.tool_type}): {tool.description}",
+                    styles["Normal"],
+                )
+            )
+            story.append(
+                Paragraph(
+                    f"  Executions: {tool.executions}, Failures: {tool.failures}",
+                    styles["Normal"],
+                )
+            )
 
         doc.build(story)
         return filepath
@@ -592,29 +634,35 @@ class ExecutableToolExperiment:
         return filepath
 
 
-def load_mixed_dataset(cola_count: int, pii_count: int, seed: int = 42) -> list[TaskItem]:
+def load_mixed_dataset(
+    cola_count: int, pii_count: int, seed: int = 42
+) -> list[TaskItem]:
     """Load mixed dataset."""
     tasks = []
 
     cola_data = list(load_dataset(DATA.COLA, "train"))
     for i in range(min(cola_count, len(cola_data))):
         item = cola_data[i]
-        tasks.append(TaskItem(
-            text=item.question,
-            expected_answer=item.answer,
-            dataset_type="cola",
-            original_index=i,
-        ))
+        tasks.append(
+            TaskItem(
+                text=item.question,
+                expected_answer=item.answer,
+                dataset_type="cola",
+                original_index=i,
+            )
+        )
 
     pii_data = list(load_dataset(DATA.PII_DETECTION, "train"))
     for i in range(min(pii_count, len(pii_data))):
         item = pii_data[i]
-        tasks.append(TaskItem(
-            text=item.question,
-            expected_answer=item.answer,
-            dataset_type="pii",
-            original_index=i,
-        ))
+        tasks.append(
+            TaskItem(
+                text=item.question,
+                expected_answer=item.answer,
+                dataset_type="pii",
+                original_index=i,
+            )
+        )
 
     random.seed(seed)
     random.shuffle(tasks)
@@ -664,7 +712,11 @@ def run_experiment(
     print("=" * 60)
 
     savings = baseline["total_tokens"] - with_tools["total_tokens"]
-    savings_pct = (savings / baseline["total_tokens"] * 100) if baseline["total_tokens"] > 0 else 0
+    savings_pct = (
+        (savings / baseline["total_tokens"] * 100)
+        if baseline["total_tokens"] > 0
+        else 0
+    )
 
     print(f"Baseline: {baseline['total_tokens']:,} tokens")
     print(f"With Tools: {with_tools['total_tokens']:,} tokens")

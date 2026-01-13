@@ -54,6 +54,7 @@ from self_distill.rlm.prompts import PROMPTS, PROMPT_DESCRIPTIONS
 @dataclass
 class PromptTestResult:
     """Results from testing a single prompt version."""
+
     prompt_version: str
     prompt_description: str
 
@@ -126,7 +127,12 @@ class PromptTestResult:
         )
 
 
-def save_checkpoint(output_dir: Path, completed_prompts: list[str], results: list[PromptTestResult], metadata: dict):
+def save_checkpoint(
+    output_dir: Path,
+    completed_prompts: list[str],
+    results: list[PromptTestResult],
+    metadata: dict,
+):
     """Save checkpoint after each prompt completion."""
     checkpoint = {
         "metadata": metadata,
@@ -140,7 +146,9 @@ def save_checkpoint(output_dir: Path, completed_prompts: list[str], results: lis
     return checkpoint_path
 
 
-def load_checkpoint(output_dir: Path) -> tuple[list[str], list[PromptTestResult], dict] | None:
+def load_checkpoint(
+    output_dir: Path,
+) -> tuple[list[str], list[PromptTestResult], dict] | None:
     """Load checkpoint if exists."""
     checkpoint_path = output_dir / "checkpoint.json"
     if not checkpoint_path.exists():
@@ -156,7 +164,9 @@ def load_checkpoint(output_dir: Path) -> tuple[list[str], list[PromptTestResult]
     return completed, results, metadata
 
 
-def create_rlm_with_prompt(prompt_version: str, tools_dir: Path, model: str, verbose: bool = False):
+def create_rlm_with_prompt(
+    prompt_version: str, tools_dir: Path, model: str, verbose: bool = False
+):
     """Create an RLM instance with a specific prompt version."""
     from rlm import RLM
 
@@ -312,7 +322,7 @@ def validate_tool(tool_path: Path, category: str) -> dict:
         spec.loader.exec_module(module)
 
         if category == "pre_completion":
-            if hasattr(module, 'check'):
+            if hasattr(module, "check"):
                 result["has_correct_function"] = True
                 # Test that it returns bool
                 try:
@@ -321,7 +331,7 @@ def validate_tool(tool_path: Path, category: str) -> dict:
                 except Exception as e:
                     result["error"] = f"check() error: {e}"
         else:
-            if hasattr(module, 'run'):
+            if hasattr(module, "run"):
                 result["has_correct_function"] = True
                 result["valid"] = True  # Don't test run() as it may have side effects
 
@@ -358,15 +368,20 @@ def run_prompt_test(
     # Create RLM with this prompt
     rlm = create_rlm_with_prompt(prompt_version, tools_dir, model, verbose)
 
-    tqdm.write(f"\n{'='*60}")
+    tqdm.write(f"\n{'=' * 60}")
     tqdm.write(f"Testing: {prompt_version} - {PROMPT_DESCRIPTIONS[prompt_version]}")
-    tqdm.write(f"{'='*60}")
+    tqdm.write(f"{'=' * 60}")
 
     start_time = time.time()
 
     # Run baseline for comparison (quick sample)
     baseline_sample = min(5, len(tasks))
-    for task in tqdm(tasks[:baseline_sample], desc=f"  [{prompt_version}] Baseline sample", unit="task", leave=False):
+    for task in tqdm(
+        tasks[:baseline_sample],
+        desc=f"  [{prompt_version}] Baseline sample",
+        unit="task",
+        leave=False,
+    ):
         prompt = f"Analyze: {task['text']}\nTask: {task['task_type']}"
         _ = client.completion(prompt, base_model)
         usage = client.get_last_usage()
@@ -374,7 +389,9 @@ def run_prompt_test(
 
     # Scale up baseline estimate
     if baseline_sample > 0:
-        result.baseline_tokens = int(result.baseline_tokens * len(tasks) / baseline_sample)
+        result.baseline_tokens = int(
+            result.baseline_tokens * len(tasks) / baseline_sample
+        )
 
     # Run RLM with detailed progress
     pbar = tqdm(
@@ -386,9 +403,9 @@ def run_prompt_test(
     )
 
     for i, task in pbar:
-        prompt = f"""Task Type: {task['task_type']}
+        prompt = f"""Task Type: {task["task_type"]}
 
-Analyze this text: {task['text']}
+Analyze this text: {task["text"]}
 
 First check if you have an existing tool for this task type.
 If not, and this is a repeatable pattern, consider creating one."""
@@ -397,9 +414,14 @@ If not, and this is a repeatable pattern, consider creating one."""
         try:
             response = rlm.completion(prompt)
 
-            if hasattr(response, 'usage_summary') and response.usage_summary:
-                for model_name, usage in response.usage_summary.model_usage_summaries.items():
-                    result.rlm_tokens += usage.total_input_tokens + usage.total_output_tokens
+            if hasattr(response, "usage_summary") and response.usage_summary:
+                for (
+                    model_name,
+                    usage,
+                ) in response.usage_summary.model_usage_summaries.items():
+                    result.rlm_tokens += (
+                        usage.total_input_tokens + usage.total_output_tokens
+                    )
 
             result.tasks_processed += 1
 
@@ -413,11 +435,13 @@ If not, and this is a repeatable pattern, consider creating one."""
         avg_time = elapsed / (i + 1)
         remaining = avg_time * (len(tasks) - i - 1)
 
-        pbar.set_postfix({
-            "done": result.tasks_processed,
-            "tokens": f"{result.rlm_tokens:,}",
-            "eta": f"{remaining/60:.1f}m",
-        })
+        pbar.set_postfix(
+            {
+                "done": result.tasks_processed,
+                "tokens": f"{result.rlm_tokens:,}",
+                "eta": f"{remaining / 60:.1f}m",
+            }
+        )
 
     result.duration_seconds = time.time() - start_time
     result.end_time = datetime.now().isoformat()
@@ -445,35 +469,51 @@ If not, and this is a repeatable pattern, consider creating one."""
 
             # Sample tool code
             if len(result.tool_samples) < 5:
-                result.tool_samples.append({
-                    "name": f"{category}/{tool_file.stem}",
-                    "code": tool_file.read_text()[:500],
-                    "valid": validation["valid"],
-                    "error": validation.get("error"),
-                })
+                result.tool_samples.append(
+                    {
+                        "name": f"{category}/{tool_file.stem}",
+                        "code": tool_file.read_text()[:500],
+                        "valid": validation["valid"],
+                        "error": validation.get("error"),
+                    }
+                )
 
-    tqdm.write(f"  Completed: {result.hooks_created} hooks, {result.replacements_created} replacements")
-    tqdm.write(f"  Tokens: baseline~{result.baseline_tokens:,} rlm={result.rlm_tokens:,}")
-    tqdm.write(f"  Duration: {result.duration_seconds/60:.1f} minutes")
+    tqdm.write(
+        f"  Completed: {result.hooks_created} hooks, {result.replacements_created} replacements"
+    )
+    tqdm.write(
+        f"  Tokens: baseline~{result.baseline_tokens:,} rlm={result.rlm_tokens:,}"
+    )
+    tqdm.write(f"  Duration: {result.duration_seconds / 60:.1f} minutes")
 
     return result
 
 
-def generate_report(output_dir: Path, results: list[PromptTestResult], model: str) -> Path:
+def generate_report(
+    output_dir: Path, results: list[PromptTestResult], model: str
+) -> Path:
     """Generate PDF comparison report."""
     pdf_path = output_dir / "prompt_comparison_report.pdf"
     doc = SimpleDocTemplate(str(pdf_path), pagesize=letter)
     styles = getSampleStyleSheet()
     story = []
 
-    title_style = ParagraphStyle('Title', parent=styles['Heading1'], fontSize=18, spaceAfter=20)
-    heading_style = ParagraphStyle('Heading', parent=styles['Heading2'], fontSize=14, spaceAfter=12)
-    code_style = ParagraphStyle('Code', fontName='Courier', fontSize=8, leading=10)
+    title_style = ParagraphStyle(
+        "Title", parent=styles["Heading1"], fontSize=18, spaceAfter=20
+    )
+    heading_style = ParagraphStyle(
+        "Heading", parent=styles["Heading2"], fontSize=14, spaceAfter=12
+    )
+    code_style = ParagraphStyle("Code", fontName="Courier", fontSize=8, leading=10)
 
     # Title
     story.append(Paragraph("Experiment 006: Prompt Variation Testing", title_style))
-    story.append(Paragraph(f"Model: {model}", styles['Normal']))
-    story.append(Paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}", styles['Normal']))
+    story.append(Paragraph(f"Model: {model}", styles["Normal"]))
+    story.append(
+        Paragraph(
+            f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}", styles["Normal"]
+        )
+    )
     story.append(Spacer(1, 20))
 
     # Summary comparison table
@@ -485,27 +525,47 @@ def generate_report(output_dir: Path, results: list[PromptTestResult], model: st
 
     for r in results:
         savings = r.baseline_tokens - r.rlm_tokens
-        savings_pct = (savings / r.baseline_tokens * 100) if r.baseline_tokens > 0 else 0
-        table_data.append([
-            r.prompt_version,
-            str(r.hooks_created),
-            str(r.replacements_created),
-            str(r.tools_with_correct_contract),
-            f"{r.baseline_tokens:,}",
-            f"{r.rlm_tokens:,}",
-            f"{savings_pct:+.1f}%",
-            f"{r.duration_seconds/60:.1f}m",
-        ])
+        savings_pct = (
+            (savings / r.baseline_tokens * 100) if r.baseline_tokens > 0 else 0
+        )
+        table_data.append(
+            [
+                r.prompt_version,
+                str(r.hooks_created),
+                str(r.replacements_created),
+                str(r.tools_with_correct_contract),
+                f"{r.baseline_tokens:,}",
+                f"{r.rlm_tokens:,}",
+                f"{savings_pct:+.1f}%",
+                f"{r.duration_seconds / 60:.1f}m",
+            ]
+        )
 
-    table = Table(table_data, colWidths=[1*inch, 0.5*inch, 0.5*inch, 0.5*inch, 0.9*inch, 0.9*inch, 0.7*inch, 0.6*inch])
-    table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
-    ]))
+    table = Table(
+        table_data,
+        colWidths=[
+            1 * inch,
+            0.5 * inch,
+            0.5 * inch,
+            0.5 * inch,
+            0.9 * inch,
+            0.9 * inch,
+            0.7 * inch,
+            0.6 * inch,
+        ],
+    )
+    table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 9),
+                ("GRID", (0, 0), (-1, -1), 1, colors.black),
+            ]
+        )
+    )
     story.append(table)
     story.append(Spacer(1, 30))
 
@@ -513,12 +573,16 @@ def generate_report(output_dir: Path, results: list[PromptTestResult], model: st
     for r in results:
         story.append(PageBreak())
         story.append(Paragraph(f"Prompt: {r.prompt_version}", heading_style))
-        story.append(Paragraph(f"<b>Description:</b> {r.prompt_description}", styles['Normal']))
+        story.append(
+            Paragraph(f"<b>Description:</b> {r.prompt_description}", styles["Normal"])
+        )
         story.append(Spacer(1, 10))
 
         # Metrics
         savings = r.baseline_tokens - r.rlm_tokens
-        savings_pct = (savings / r.baseline_tokens * 100) if r.baseline_tokens > 0 else 0
+        savings_pct = (
+            (savings / r.baseline_tokens * 100) if r.baseline_tokens > 0 else 0
+        )
 
         metrics_data = [
             ["Metric", "Value"],
@@ -529,24 +593,33 @@ def generate_report(output_dir: Path, results: list[PromptTestResult], model: st
             ["Baseline Tokens (est)", f"{r.baseline_tokens:,}"],
             ["RLM Tokens", f"{r.rlm_tokens:,}"],
             ["Token Savings", f"{savings:,} ({savings_pct:+.1f}%)"],
-            ["Duration", f"{r.duration_seconds/60:.1f} minutes"],
+            ["Duration", f"{r.duration_seconds / 60:.1f} minutes"],
             ["Tasks Processed", f"{r.tasks_processed}/{r.tasks_total}"],
         ]
 
-        metrics_table = Table(metrics_data, colWidths=[2.5*inch, 2*inch])
-        metrics_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        ]))
+        metrics_table = Table(metrics_data, colWidths=[2.5 * inch, 2 * inch])
+        metrics_table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
+                    ("GRID", (0, 0), (-1, -1), 1, colors.black),
+                ]
+            )
+        )
         story.append(metrics_table)
         story.append(Spacer(1, 15))
 
         # Tool samples
         if r.tool_samples:
-            story.append(Paragraph("Sample Tools Created:", styles['Normal']))
+            story.append(Paragraph("Sample Tools Created:", styles["Normal"]))
             for sample in r.tool_samples[:3]:
-                story.append(Paragraph(f"<b>{sample['name']}</b> (valid={sample['valid']})", styles['Normal']))
-                story.append(Preformatted(sample['code'][:400], code_style))
+                story.append(
+                    Paragraph(
+                        f"<b>{sample['name']}</b> (valid={sample['valid']})",
+                        styles["Normal"],
+                    )
+                )
+                story.append(Preformatted(sample["code"][:400], code_style))
                 story.append(Spacer(1, 10))
 
     doc.build(story)
@@ -554,13 +627,23 @@ def generate_report(output_dir: Path, results: list[PromptTestResult], model: st
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Experiment 006: Prompt Variation Testing")
-    parser.add_argument("--model", default="ollama/qwen2.5-coder:32b", help="Model to test")
-    parser.add_argument("--prompts", nargs="+", default=list(PROMPTS.keys()), help="Prompts to test")
+    parser = argparse.ArgumentParser(
+        description="Experiment 006: Prompt Variation Testing"
+    )
+    parser.add_argument(
+        "--model", default="ollama/qwen2.5-coder:32b", help="Model to test"
+    )
+    parser.add_argument(
+        "--prompts", nargs="+", default=list(PROMPTS.keys()), help="Prompts to test"
+    )
     parser.add_argument("--cola", type=int, default=30, help="CoLA samples per test")
     parser.add_argument("--pii", type=int, default=10, help="PII samples per test")
     parser.add_argument("--verbose", action="store_true", help="Verbose output")
-    parser.add_argument("--resume", type=str, help="Resume from checkpoint directory (e.g., experiment_outputs/exp006_20260112_234253)")
+    parser.add_argument(
+        "--resume",
+        type=str,
+        help="Resume from checkpoint directory (e.g., experiment_outputs/exp006_20260112_234253)",
+    )
     args = parser.parse_args()
 
     print("=" * 60)
@@ -601,7 +684,9 @@ def main():
         if checkpoint_data:
             completed_prompts, results, saved_metadata = checkpoint_data
             metadata.update(saved_metadata)
-            print(f"Loaded checkpoint: {len(completed_prompts)} prompts already completed")
+            print(
+                f"Loaded checkpoint: {len(completed_prompts)} prompts already completed"
+            )
             print(f"  Completed: {completed_prompts}")
             remaining = [p for p in args.prompts if p not in completed_prompts]
             print(f"  Remaining: {remaining}")
@@ -615,21 +700,21 @@ def main():
     for i, item in enumerate(cola_ds):
         if i >= args.cola:
             break
-        tasks.append({
-            "text": item.question,
-            "task_type": "grammar",
-            "expected": item.answer
-        })
+        tasks.append(
+            {"text": item.question, "task_type": "grammar", "expected": item.answer}
+        )
 
     pii_ds = load_dataset(DATA.PII_DETECTION, Split.DEV)
     for i, item in enumerate(pii_ds):
         if i >= args.pii:
             break
-        tasks.append({
-            "text": item.question,
-            "task_type": "pii_detection",
-            "expected": item.answer
-        })
+        tasks.append(
+            {
+                "text": item.question,
+                "task_type": "pii_detection",
+                "expected": item.answer,
+            }
+        )
 
     print(f"Loaded {len(tasks)} tasks")
     print()
@@ -650,7 +735,7 @@ def main():
         if results:
             avg_time = sum(r.duration_seconds for r in results) / len(results)
             est_remaining = avg_time * len(prompts_to_run)
-            print(f"Estimated time remaining: {est_remaining/60:.1f} minutes")
+            print(f"Estimated time remaining: {est_remaining / 60:.1f} minutes")
         print()
 
     # Test each prompt with checkpoint saving
@@ -672,7 +757,9 @@ def main():
         completed_prompts.append(prompt_version)
 
         # Save checkpoint after each prompt
-        checkpoint_path = save_checkpoint(output_dir, completed_prompts, results, metadata)
+        checkpoint_path = save_checkpoint(
+            output_dir, completed_prompts, results, metadata
+        )
         tqdm.write(f"  Checkpoint saved: {checkpoint_path}")
 
     # Generate report
@@ -687,7 +774,7 @@ def main():
             "tasks_per_prompt": len(tasks),
             "total_duration_minutes": sum(r.duration_seconds for r in results) / 60,
         },
-        "results": [r.to_dict() for r in results]
+        "results": [r.to_dict() for r in results],
     }
 
     with open(output_dir / "results.json", "w") as f:
@@ -697,17 +784,25 @@ def main():
     print("\n" + "=" * 60)
     print("SUMMARY")
     print("=" * 60)
-    print(f"{'Prompt':<15} {'Hooks':<8} {'Repl':<8} {'Valid':<8} {'Savings':<12} {'Time':<10}")
+    print(
+        f"{'Prompt':<15} {'Hooks':<8} {'Repl':<8} {'Valid':<8} {'Savings':<12} {'Time':<10}"
+    )
     print("-" * 70)
 
     total_time = 0
     for r in results:
-        savings_pct = ((r.baseline_tokens - r.rlm_tokens) / r.baseline_tokens * 100) if r.baseline_tokens > 0 else 0
-        print(f"{r.prompt_version:<15} {r.hooks_created:<8} {r.replacements_created:<8} {r.tools_with_correct_contract:<8} {savings_pct:>+10.1f}% {r.duration_seconds/60:>8.1f}m")
+        savings_pct = (
+            ((r.baseline_tokens - r.rlm_tokens) / r.baseline_tokens * 100)
+            if r.baseline_tokens > 0
+            else 0
+        )
+        print(
+            f"{r.prompt_version:<15} {r.hooks_created:<8} {r.replacements_created:<8} {r.tools_with_correct_contract:<8} {savings_pct:>+10.1f}% {r.duration_seconds / 60:>8.1f}m"
+        )
         total_time += r.duration_seconds
 
     print("-" * 70)
-    print(f"Total time: {total_time/60:.1f} minutes")
+    print(f"Total time: {total_time / 60:.1f} minutes")
     print()
     print(f"Report: {pdf_path}")
     print(f"Results: {output_dir / 'results.json'}")

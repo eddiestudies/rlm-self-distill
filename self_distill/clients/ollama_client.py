@@ -37,10 +37,14 @@ class OllamaClient(BaseLM):
         self.last_prompt_tokens: int = 0
         self.last_completion_tokens: int = 0
 
-    def completion(self, prompt: str | list[dict[str, Any]], model: str | None = None) -> str:
+    def completion(
+        self, prompt: str | list[dict[str, Any]], model: str | None = None
+    ) -> str:
         if isinstance(prompt, str):
             messages = [{"role": "user", "content": prompt}]
-        elif isinstance(prompt, list) and all(isinstance(item, dict) for item in prompt):
+        elif isinstance(prompt, list) and all(
+            isinstance(item, dict) for item in prompt
+        ):
             messages = prompt
         else:
             raise ValueError(f"Invalid prompt type: {type(prompt)}")
@@ -58,7 +62,9 @@ class OllamaClient(BaseLM):
     ) -> str:
         if isinstance(prompt, str):
             messages = [{"role": "user", "content": prompt}]
-        elif isinstance(prompt, list) and all(isinstance(item, dict) for item in prompt):
+        elif isinstance(prompt, list) and all(
+            isinstance(item, dict) for item in prompt
+        ):
             messages = prompt
         else:
             raise ValueError(f"Invalid prompt type: {type(prompt)}")

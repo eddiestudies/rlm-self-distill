@@ -135,13 +135,17 @@ class BatchResult:
     @property
     def overhead_vs_baseline(self) -> float:
         if self.baseline_tokens > 0:
-            return ((self.with_tools_tokens - self.baseline_tokens) / self.baseline_tokens) * 100
+            return (
+                (self.with_tools_tokens - self.baseline_tokens) / self.baseline_tokens
+            ) * 100
         return 0
 
     @property
     def overhead_vs_direct(self) -> float:
         if self.direct_lm_tokens > 0:
-            return ((self.with_tools_tokens - self.direct_lm_tokens) / self.direct_lm_tokens) * 100
+            return (
+                (self.with_tools_tokens - self.direct_lm_tokens) / self.direct_lm_tokens
+            ) * 100
         return 0
 
 
@@ -184,13 +188,15 @@ class ScalingExperiment:
             response = self.client.completion(prompt)
             usage = self.client.get_last_usage()
 
-            results.append({
-                "task_index": len(results),
-                "dataset_type": task.dataset_type,
-                "input_tokens": usage.total_input_tokens,
-                "output_tokens": usage.total_output_tokens,
-                "response": response[:200],  # Truncate for storage
-            })
+            results.append(
+                {
+                    "task_index": len(results),
+                    "dataset_type": task.dataset_type,
+                    "input_tokens": usage.total_input_tokens,
+                    "output_tokens": usage.total_output_tokens,
+                    "response": response[:200],  # Truncate for storage
+                }
+            )
 
         return results
 
@@ -201,20 +207,25 @@ class ScalingExperiment:
         for task in tqdm(tasks, desc="  Baseline", unit="task"):
             prompt = format_task_prompt(task)
             messages = [
-                {"role": "system", "content": "You are a helpful assistant. Answer accurately and concisely."},
+                {
+                    "role": "system",
+                    "content": "You are a helpful assistant. Answer accurately and concisely.",
+                },
                 {"role": "user", "content": prompt},
             ]
 
             response = self.client.completion(messages)
             usage = self.client.get_last_usage()
 
-            results.append({
-                "task_index": len(results),
-                "dataset_type": task.dataset_type,
-                "input_tokens": usage.total_input_tokens,
-                "output_tokens": usage.total_output_tokens,
-                "response": response[:200],
-            })
+            results.append(
+                {
+                    "task_index": len(results),
+                    "dataset_type": task.dataset_type,
+                    "input_tokens": usage.total_input_tokens,
+                    "output_tokens": usage.total_output_tokens,
+                    "response": response[:200],
+                }
+            )
 
         return results
 
@@ -228,15 +239,21 @@ class ScalingExperiment:
             tools_section += f"- {name} ({tool.tool_type}): {tool.description}\n"
         return RECURSIVE_TOOL_SYSTEM_PROMPT + tools_section
 
-    def run_with_tools_batch(self, tasks: list[TaskItem], batch_name: str) -> tuple[list[dict], list[dict]]:
+    def run_with_tools_batch(
+        self, tasks: list[TaskItem], batch_name: str
+    ) -> tuple[list[dict], list[dict]]:
         """Run with tools on a batch. Returns (results, new_tools)."""
         results = []
         new_tools = []
 
-        pbar = tqdm(enumerate(tasks), total=len(tasks), desc="  With Tools", unit="task")
+        pbar = tqdm(
+            enumerate(tasks), total=len(tasks), desc="  With Tools", unit="task"
+        )
         for i, task in pbar:
             system_prompt = self._build_system_with_tools()
-            task_context = f"(You have {len(self.tools)} tools available.)" if self.tools else ""
+            task_context = (
+                f"(You have {len(self.tools)} tools available.)" if self.tools else ""
+            )
             prompt = format_task_prompt(task, task_context)
 
             messages = [
@@ -272,15 +289,17 @@ class ScalingExperiment:
                 if tool_name in self.tool_usage_counts:
                     self.tool_usage_counts[tool_name] += 1
 
-            results.append({
-                "task_index": i,
-                "dataset_type": task.dataset_type,
-                "input_tokens": usage.total_input_tokens,
-                "output_tokens": usage.total_output_tokens,
-                "tools_created": tools_created,
-                "tools_used": tools_used,
-                "response": response[:200],
-            })
+            results.append(
+                {
+                    "task_index": i,
+                    "dataset_type": task.dataset_type,
+                    "input_tokens": usage.total_input_tokens,
+                    "output_tokens": usage.total_output_tokens,
+                    "tools_created": tools_created,
+                    "tools_used": tools_used,
+                    "response": response[:200],
+                }
+            )
 
             pbar.set_postfix(tools=len(self.tools))
 
@@ -291,9 +310,9 @@ class ScalingExperiment:
         batch_name = f"scale_{scale}x"
         total_tasks = cola_count + pii_count
 
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"BATCH: {batch_name} ({total_tasks} tasks)")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
         # Load data
         print(f"\nLoading {cola_count} CoLA + {pii_count} PII samples...")
@@ -302,17 +321,23 @@ class ScalingExperiment:
         # Run direct LM
         print("\nRunning Direct LM...")
         direct_results = self.run_direct_lm_batch(tasks, batch_name)
-        direct_tokens = sum(r["input_tokens"] + r["output_tokens"] for r in direct_results)
+        direct_tokens = sum(
+            r["input_tokens"] + r["output_tokens"] for r in direct_results
+        )
 
         # Run baseline
         print("\nRunning Baseline...")
         baseline_results = self.run_baseline_batch(tasks, batch_name)
-        baseline_tokens = sum(r["input_tokens"] + r["output_tokens"] for r in baseline_results)
+        baseline_tokens = sum(
+            r["input_tokens"] + r["output_tokens"] for r in baseline_results
+        )
 
         # Run with tools (tools persist across batches!)
         print("\nRunning With Tools...")
         tools_results, new_tools = self.run_with_tools_batch(tasks, batch_name)
-        tools_tokens = sum(r["input_tokens"] + r["output_tokens"] for r in tools_results)
+        tools_tokens = sum(
+            r["input_tokens"] + r["output_tokens"] for r in tools_results
+        )
 
         # Compile batch result
         result = BatchResult(
@@ -335,9 +360,15 @@ class ScalingExperiment:
 
         # Print summary
         print(f"\n--- Batch Summary ---")
-        print(f"Direct LM: {direct_tokens:,} tokens ({result.tokens_per_task_direct:.1f}/task)")
-        print(f"Baseline: {baseline_tokens:,} tokens ({result.tokens_per_task_baseline:.1f}/task)")
-        print(f"With Tools: {tools_tokens:,} tokens ({result.tokens_per_task_tools:.1f}/task)")
+        print(
+            f"Direct LM: {direct_tokens:,} tokens ({result.tokens_per_task_direct:.1f}/task)"
+        )
+        print(
+            f"Baseline: {baseline_tokens:,} tokens ({result.tokens_per_task_baseline:.1f}/task)"
+        )
+        print(
+            f"With Tools: {tools_tokens:,} tokens ({result.tokens_per_task_tools:.1f}/task)"
+        )
         print(f"Overhead vs Baseline: {result.overhead_vs_baseline:+.1f}%")
         print(f"Total tools: {len(self.tools)}, New tools this batch: {len(new_tools)}")
 
@@ -351,30 +382,57 @@ class ScalingExperiment:
         story = []
 
         # Title
-        title_style = ParagraphStyle("Title", parent=styles["Heading1"], fontSize=16, spaceAfter=12)
-        story.append(Paragraph(f"Experiment 002: Scaling Analysis - {result.batch_name}", title_style))
-        story.append(Paragraph(f"Scale: {result.scale}x | Tasks: {result.total_tasks}", styles["Normal"]))
+        title_style = ParagraphStyle(
+            "Title", parent=styles["Heading1"], fontSize=16, spaceAfter=12
+        )
+        story.append(
+            Paragraph(
+                f"Experiment 002: Scaling Analysis - {result.batch_name}", title_style
+            )
+        )
+        story.append(
+            Paragraph(
+                f"Scale: {result.scale}x | Tasks: {result.total_tasks}",
+                styles["Normal"],
+            )
+        )
         story.append(Spacer(1, 0.2 * inch))
 
         # Summary table
         summary_data = [
             ["Metric", "Direct LM", "Baseline", "With Tools"],
-            ["Total Tokens", f"{result.direct_lm_tokens:,}", f"{result.baseline_tokens:,}", f"{result.with_tools_tokens:,}"],
-            ["Tokens/Task", f"{result.tokens_per_task_direct:.1f}", f"{result.tokens_per_task_baseline:.1f}", f"{result.tokens_per_task_tools:.1f}"],
+            [
+                "Total Tokens",
+                f"{result.direct_lm_tokens:,}",
+                f"{result.baseline_tokens:,}",
+                f"{result.with_tools_tokens:,}",
+            ],
+            [
+                "Tokens/Task",
+                f"{result.tokens_per_task_direct:.1f}",
+                f"{result.tokens_per_task_baseline:.1f}",
+                f"{result.tokens_per_task_tools:.1f}",
+            ],
             ["Overhead vs Baseline", "-", "-", f"{result.overhead_vs_baseline:+.1f}%"],
             ["Tools Created", "0", "0", str(result.tools_created)],
         ]
 
-        table = Table(summary_data, colWidths=[1.8*inch, 1.3*inch, 1.3*inch, 1.3*inch])
-        table.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
-            ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
-            ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-            ("FONTSIZE", (0, 0), (-1, -1), 9),
-            ("GRID", (0, 0), (-1, -1), 1, colors.black),
-            ("BACKGROUND", (0, 1), (-1, -1), colors.beige),
-        ]))
+        table = Table(
+            summary_data, colWidths=[1.8 * inch, 1.3 * inch, 1.3 * inch, 1.3 * inch]
+        )
+        table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                    ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, -1), 9),
+                    ("GRID", (0, 0), (-1, -1), 1, colors.black),
+                    ("BACKGROUND", (0, 1), (-1, -1), colors.beige),
+                ]
+            )
+        )
         story.append(table)
         story.append(Spacer(1, 0.2 * inch))
 
@@ -382,10 +440,12 @@ class ScalingExperiment:
         if result.tools:
             story.append(Paragraph("Tools Available", styles["Heading2"]))
             for tool in result.tools:
-                story.append(Paragraph(
-                    f"<b>{tool['name']}</b> ({tool['type']}): {tool['description'][:100]}...",
-                    styles["Normal"]
-                ))
+                story.append(
+                    Paragraph(
+                        f"<b>{tool['name']}</b> ({tool['type']}): {tool['description'][:100]}...",
+                        styles["Normal"],
+                    )
+                )
             story.append(Spacer(1, 0.1 * inch))
 
         doc.build(story)
@@ -399,8 +459,12 @@ class ScalingExperiment:
         story = []
 
         # Title
-        title_style = ParagraphStyle("Title", parent=styles["Heading1"], fontSize=18, spaceAfter=20)
-        story.append(Paragraph("Experiment 002: Scaling Analysis - Joint Summary", title_style))
+        title_style = ParagraphStyle(
+            "Title", parent=styles["Heading1"], fontSize=18, spaceAfter=20
+        )
+        story.append(
+            Paragraph("Experiment 002: Scaling Analysis - Joint Summary", title_style)
+        )
         story.append(Paragraph(f"Run ID: exp002_{self.timestamp}", styles["Normal"]))
         story.append(Paragraph(f"Model: {self.model_name}", styles["Normal"]))
         story.append(Spacer(1, 0.3 * inch))
@@ -412,54 +476,85 @@ class ScalingExperiment:
         data = [header]
 
         for r in self.batch_results:
-            data.append([
-                f"{r.scale}x",
-                str(r.total_tasks),
-                f"{r.direct_lm_tokens:,}",
-                f"{r.baseline_tokens:,}",
-                f"{r.with_tools_tokens:,}",
-                f"{r.overhead_vs_baseline:+.1f}%",
-            ])
+            data.append(
+                [
+                    f"{r.scale}x",
+                    str(r.total_tasks),
+                    f"{r.direct_lm_tokens:,}",
+                    f"{r.baseline_tokens:,}",
+                    f"{r.with_tools_tokens:,}",
+                    f"{r.overhead_vs_baseline:+.1f}%",
+                ]
+            )
 
-        table = Table(data, colWidths=[0.7*inch, 0.7*inch, 1.2*inch, 1.2*inch, 1.2*inch, 1*inch])
-        table.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
-            ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
-            ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-            ("FONTSIZE", (0, 0), (-1, -1), 9),
-            ("GRID", (0, 0), (-1, -1), 1, colors.black),
-            ("BACKGROUND", (0, 1), (-1, -1), colors.beige),
-        ]))
+        table = Table(
+            data,
+            colWidths=[
+                0.7 * inch,
+                0.7 * inch,
+                1.2 * inch,
+                1.2 * inch,
+                1.2 * inch,
+                1 * inch,
+            ],
+        )
+        table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                    ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, -1), 9),
+                    ("GRID", (0, 0), (-1, -1), 1, colors.black),
+                    ("BACKGROUND", (0, 1), (-1, -1), colors.beige),
+                ]
+            )
+        )
         story.append(table)
         story.append(Spacer(1, 0.3 * inch))
 
         # Tokens per task comparison
         story.append(Paragraph("Tokens Per Task by Scale", styles["Heading2"]))
 
-        header2 = ["Scale", "Direct/Task", "Baseline/Task", "Tools/Task", "Tool Overhead/Task"]
+        header2 = [
+            "Scale",
+            "Direct/Task",
+            "Baseline/Task",
+            "Tools/Task",
+            "Tool Overhead/Task",
+        ]
         data2 = [header2]
 
         for r in self.batch_results:
             overhead_per_task = r.tokens_per_task_tools - r.tokens_per_task_baseline
-            data2.append([
-                f"{r.scale}x",
-                f"{r.tokens_per_task_direct:.1f}",
-                f"{r.tokens_per_task_baseline:.1f}",
-                f"{r.tokens_per_task_tools:.1f}",
-                f"{overhead_per_task:+.1f}",
-            ])
+            data2.append(
+                [
+                    f"{r.scale}x",
+                    f"{r.tokens_per_task_direct:.1f}",
+                    f"{r.tokens_per_task_baseline:.1f}",
+                    f"{r.tokens_per_task_tools:.1f}",
+                    f"{overhead_per_task:+.1f}",
+                ]
+            )
 
-        table2 = Table(data2, colWidths=[0.8*inch, 1.2*inch, 1.2*inch, 1.2*inch, 1.4*inch])
-        table2.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
-            ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
-            ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-            ("FONTSIZE", (0, 0), (-1, -1), 9),
-            ("GRID", (0, 0), (-1, -1), 1, colors.black),
-            ("BACKGROUND", (0, 1), (-1, -1), colors.beige),
-        ]))
+        table2 = Table(
+            data2,
+            colWidths=[0.8 * inch, 1.2 * inch, 1.2 * inch, 1.2 * inch, 1.4 * inch],
+        )
+        table2.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                    ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, -1), 9),
+                    ("GRID", (0, 0), (-1, -1), 1, colors.black),
+                    ("BACKGROUND", (0, 1), (-1, -1), colors.beige),
+                ]
+            )
+        )
         story.append(table2)
         story.append(Spacer(1, 0.3 * inch))
 
@@ -473,23 +568,31 @@ class ScalingExperiment:
         for r in self.batch_results:
             cumulative_tools += r.tools_created
             cumulative_usages = r.tool_usages
-            tool_data.append([
-                r.batch_name,
-                str(r.tools_created),
-                str(cumulative_tools),
-                str(cumulative_usages),
-            ])
+            tool_data.append(
+                [
+                    r.batch_name,
+                    str(r.tools_created),
+                    str(cumulative_tools),
+                    str(cumulative_usages),
+                ]
+            )
 
-        tool_table = Table(tool_data, colWidths=[1.5*inch, 1.2*inch, 1.5*inch, 1.2*inch])
-        tool_table.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
-            ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
-            ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-            ("FONTSIZE", (0, 0), (-1, -1), 9),
-            ("GRID", (0, 0), (-1, -1), 1, colors.black),
-            ("BACKGROUND", (0, 1), (-1, -1), colors.beige),
-        ]))
+        tool_table = Table(
+            tool_data, colWidths=[1.5 * inch, 1.2 * inch, 1.5 * inch, 1.2 * inch]
+        )
+        tool_table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                    ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, -1), 9),
+                    ("GRID", (0, 0), (-1, -1), 1, colors.black),
+                    ("BACKGROUND", (0, 1), (-1, -1), colors.beige),
+                ]
+            )
+        )
         story.append(tool_table)
         story.append(Spacer(1, 0.3 * inch))
 
@@ -500,10 +603,12 @@ class ScalingExperiment:
         if self.batch_results and self.batch_results[-1].tools:
             for tool in self.batch_results[-1].tools:
                 usages = self.batch_results[-1].tool_usage_counts.get(tool["name"], 0)
-                story.append(Paragraph(
-                    f"<b>{tool['name']}</b> ({tool['type']}) - Used {usages} times",
-                    styles["Normal"]
-                ))
+                story.append(
+                    Paragraph(
+                        f"<b>{tool['name']}</b> ({tool['type']}) - Used {usages} times",
+                        styles["Normal"],
+                    )
+                )
                 story.append(Paragraph(f"  {tool['description']}", styles["Normal"]))
                 story.append(Spacer(1, 0.05 * inch))
 
@@ -520,16 +625,20 @@ class ScalingExperiment:
             else:
                 trend = "increasing (tools not amortizing)"
 
-            story.append(Paragraph(
-                f"Overhead trend: {first.overhead_vs_baseline:+.1f}% → {last.overhead_vs_baseline:+.1f}% ({trend})",
-                styles["Normal"]
-            ))
+            story.append(
+                Paragraph(
+                    f"Overhead trend: {first.overhead_vs_baseline:+.1f}% → {last.overhead_vs_baseline:+.1f}% ({trend})",
+                    styles["Normal"],
+                )
+            )
 
             total_tool_tokens = sum(t.get("creation_tokens", 0) for t in last.tools)
-            story.append(Paragraph(
-                f"Total tool creation overhead: ~{total_tool_tokens:,} tokens",
-                styles["Normal"]
-            ))
+            story.append(
+                Paragraph(
+                    f"Total tool creation overhead: ~{total_tool_tokens:,} tokens",
+                    styles["Normal"],
+                )
+            )
 
         doc.build(story)
         return filepath
@@ -562,7 +671,9 @@ class ScalingExperiment:
                 for r in self.batch_results
             ],
             "final_tools": self.batch_results[-1].tools if self.batch_results else [],
-            "final_tool_usages": self.batch_results[-1].tool_usage_counts if self.batch_results else {},
+            "final_tool_usages": self.batch_results[-1].tool_usage_counts
+            if self.batch_results
+            else {},
         }
 
         with open(results_file, "w") as f:
@@ -582,7 +693,9 @@ def run_scaling_experiment(
     print("Experiment 002: Scaling Analysis")
     print("=" * 60)
     print(f"Model: {model_name}")
-    print(f"Base size: {base_cola} CoLA + {base_pii} PII = {base_cola + base_pii} tasks")
+    print(
+        f"Base size: {base_cola} CoLA + {base_pii} PII = {base_cola + base_pii} tasks"
+    )
     print(f"Scales: {scales}")
 
     experiment = ScalingExperiment(model_name=model_name)
@@ -624,7 +737,12 @@ if __name__ == "__main__":
     parser.add_argument("--model", default="llama3.2:3b", help="Ollama model name")
     parser.add_argument("--base-cola", type=int, default=10, help="Base CoLA count")
     parser.add_argument("--base-pii", type=int, default=5, help="Base PII count")
-    parser.add_argument("--scales", type=str, default="1,10", help="Comma-separated scales (e.g., 1,10,100)")
+    parser.add_argument(
+        "--scales",
+        type=str,
+        default="1,10",
+        help="Comma-separated scales (e.g., 1,10,100)",
+    )
 
     args = parser.parse_args()
     scales = [int(s) for s in args.scales.split(",")]

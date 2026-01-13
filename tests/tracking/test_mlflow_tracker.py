@@ -304,8 +304,12 @@ class TestExperimentTrackerSummary:
         mock_mlflow.create_experiment.return_value = "exp_123"
 
         tracker = ExperimentTracker("test")
-        tracker.track_call(CallType.RULE_CREATION, input_tokens=100, output_tokens=50, rule_tokens=50)
-        tracker.track_call(CallType.RULE_USAGE, input_tokens=80, output_tokens=40, rule_tokens=30)
+        tracker.track_call(
+            CallType.RULE_CREATION, input_tokens=100, output_tokens=50, rule_tokens=50
+        )
+        tracker.track_call(
+            CallType.RULE_USAGE, input_tokens=80, output_tokens=40, rule_tokens=30
+        )
         tracker.track_call(CallType.NO_RULE, input_tokens=60, output_tokens=30)
         tracker.register_rule("rule_1", "Test")
         tracker.record_rule_usage("rule_1")
@@ -329,8 +333,12 @@ class TestExperimentTrackerFinalMetrics:
         mock_mlflow.create_experiment.return_value = "exp_123"
 
         tracker = ExperimentTracker("test")
-        tracker.track_call(CallType.RULE_CREATION, input_tokens=100, output_tokens=50, rule_tokens=50)
-        tracker.track_call(CallType.RULE_USAGE, input_tokens=80, output_tokens=40, rule_tokens=30)
+        tracker.track_call(
+            CallType.RULE_CREATION, input_tokens=100, output_tokens=50, rule_tokens=50
+        )
+        tracker.track_call(
+            CallType.RULE_USAGE, input_tokens=80, output_tokens=40, rule_tokens=30
+        )
         tracker.register_rule("rule_1", "Test", creation_tokens=50)
         tracker.record_rule_usage("rule_1", tokens_saved=20)
 

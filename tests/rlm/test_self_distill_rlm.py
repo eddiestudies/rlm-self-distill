@@ -171,7 +171,9 @@ class TestToolRegistryExecution:
         assert os.path.exists(hook_path)
 
     def test_create_replacement_tool(self, registry_env, tools_dir):
-        registry_env["create_tool"]("replacements", "test_replacement", "A test replacement")
+        registry_env["create_tool"](
+            "replacements", "test_replacement", "A test replacement"
+        )
         registry_env["write_to_tool"]("def run(text):")
         registry_env["write_to_tool"]("    return 'replaced: ' + text")
         registry_env["finish_tool"]()

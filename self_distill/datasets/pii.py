@@ -42,7 +42,9 @@ class PIITask:
         """Return text with PII replaced by type labels."""
         result = self.text
         for entity in sorted(self.entities, key=lambda e: e.start, reverse=True):
-            result = result[:entity.start] + f"[{entity.pii_type}]" + result[entity.end:]
+            result = (
+                result[: entity.start] + f"[{entity.pii_type}]" + result[entity.end :]
+            )
         return result
 
     def get_entities_json(self) -> str:
