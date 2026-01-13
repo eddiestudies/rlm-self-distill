@@ -2,7 +2,11 @@
 
 import asyncio
 
+import pytest
+
 from self_distill import OllamaClient
+
+pytestmark = pytest.mark.skip(reason="Integration test requires running Ollama server")
 
 
 def test_sync_completion():
