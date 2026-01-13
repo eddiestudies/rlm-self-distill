@@ -18,7 +18,6 @@ import json
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any
 
 from tqdm import tqdm
 
@@ -138,17 +137,18 @@ def run(text: str) -> str:
 '''
     (tools_dir / "utilities" / "pii_masker.py").write_text(pii_masker)
 
-    print(f"Seeded tools directory with:")
-    print(f"  - pre_completion/pii_detector.py (check -> bool)")
-    print(f"  - pre_completion/grammar_checker.py (check -> bool)")
-    print(f"  - replacements/pii_detector.py (run -> dict)")
-    print(f"  - replacements/grammar_checker.py (run -> dict)")
-    print(f"  - utilities/pii_masker.py (run -> str)")
+    print("Seeded tools directory with:")
+    print("  - pre_completion/pii_detector.py (check -> bool)")
+    print("  - pre_completion/grammar_checker.py (check -> bool)")
+    print("  - replacements/pii_detector.py (run -> dict)")
+    print("  - replacements/grammar_checker.py (run -> dict)")
+    print("  - utilities/pii_masker.py (run -> str)")
 
 
 @dataclass
 class ToolRecord:
     """Record of a tool created by the LLM."""
+
     name: str
     file_path: str
     description: str
@@ -157,9 +157,10 @@ class ToolRecord:
     used_count: int = 0
 
 
-@dataclass 
+@dataclass
 class MacroRecord:
     """Record of a macro/code block executed by the LLM."""
+
     task_index: int
     task_type: str
     code: str
@@ -170,6 +171,7 @@ class MacroRecord:
 @dataclass
 class ExperimentResults:
     """Results from the experiment."""
+
     tools: list[ToolRecord] = field(default_factory=list)
     macros: list[MacroRecord] = field(default_factory=list)
     baseline_tokens: int = 0
@@ -186,9 +188,9 @@ def run_baseline(client: OllamaClient, model: str, tasks: list[dict]) -> int:
     for task in tqdm(tasks, desc="Baseline", unit="task"):
         prompt = f"""Analyze the following text:
 
-Text: {task['text']}
+Text: {task["text"]}
 
-Task: {task['task_type']}
+Task: {task["task_type"]}
 
 Provide your analysis."""
 
@@ -199,15 +201,17 @@ Provide your analysis."""
     return total_tokens
 
 
-def run_with_rlm(rlm: SelfDistillRLM, tasks: list[dict], results: ExperimentResults) -> int:
+def run_with_rlm(
+    rlm: SelfDistillRLM, tasks: list[dict], results: ExperimentResults
+) -> int:
     """Run tasks using SelfDistillRLM."""
     total_tokens = 0
 
     pbar = tqdm(enumerate(tasks), total=len(tasks), desc="RLM", unit="task")
     for i, task in pbar:
-        prompt = f"""Task Type: {task['task_type']}
+        prompt = f"""Task Type: {task["task_type"]}
 
-Analyze this text: {task['text']}
+Analyze this text: {task["text"]}
 
 If this is a grammar task, check if the sentence is grammatically acceptable.
 If this is a PII task, detect any personally identifiable information.
@@ -220,21 +224,28 @@ If dealing with PII, apply the safety macro pattern first."""
             response = rlm.completion(prompt)
 
             # Track tokens from response (RLM uses usage_summary.model_usage_summaries)
-            if hasattr(response, 'usage_summary') and response.usage_summary:
-                for model_name, usage in response.usage_summary.model_usage_summaries.items():
+            if hasattr(response, "usage_summary") and response.usage_summary:
+                for (
+                    model_name,
+                    usage,
+                ) in response.usage_summary.model_usage_summaries.items():
                     total_tokens += usage.total_input_tokens + usage.total_output_tokens
 
             # Record any code blocks (macros) that were executed
-            if hasattr(response, 'iterations'):
+            if hasattr(response, "iterations"):
                 for iteration in response.iterations:
-                    if hasattr(iteration, 'code_blocks'):
+                    if hasattr(iteration, "code_blocks"):
                         for block in iteration.code_blocks:
                             macro = MacroRecord(
                                 task_index=i,
-                                task_type=task['task_type'],
-                                code=block.code if hasattr(block, 'code') else str(block),
-                                output=str(block.result) if hasattr(block, 'result') else "",
-                                timestamp=datetime.now().isoformat()
+                                task_type=task["task_type"],
+                                code=block.code
+                                if hasattr(block, "code")
+                                else str(block),
+                                output=str(block.result)
+                                if hasattr(block, "result")
+                                else "",
+                                timestamp=datetime.now().isoformat(),
                             )
                             results.macros.append(macro)
 
@@ -245,7 +256,11 @@ If dealing with PII, apply the safety macro pattern first."""
         # Update progress bar with tool counts
         if (i + 1) % 10 == 0:
             metrics = rlm.get_metrics()
-            pbar.set_postfix(hooks=metrics['hooks'], repl=metrics['replacements'], util=metrics['utilities'])
+            pbar.set_postfix(
+                hooks=metrics["hooks"],
+                repl=metrics["replacements"],
+                util=metrics["utilities"],
+            )
 
     results.tasks_processed = len(tasks)
     return total_tokens
@@ -263,8 +278,8 @@ def collect_tools(tools_dir: Path, results: ExperimentResults):
 
             # Extract description from comment if present
             description = ""
-            lines = code.split('\n')
-            if lines and lines[0].startswith('# '):
+            lines = code.split("\n")
+            if lines and lines[0].startswith("# "):
                 description = lines[0][2:].strip()
 
             tool = ToolRecord(
@@ -272,7 +287,9 @@ def collect_tools(tools_dir: Path, results: ExperimentResults):
                 file_path=str(tool_file),
                 description=description,
                 code=code,
-                created_at=datetime.fromtimestamp(tool_file.stat().st_mtime).isoformat()
+                created_at=datetime.fromtimestamp(
+                    tool_file.stat().st_mtime
+                ).isoformat(),
             )
             results.tools.append(tool)
 
@@ -283,25 +300,37 @@ def generate_report(output_dir: Path, results: ExperimentResults, model: str) ->
     doc = SimpleDocTemplate(str(pdf_path), pagesize=letter)
     styles = getSampleStyleSheet()
     story = []
-    
+
     # Custom styles
-    title_style = ParagraphStyle('Title', parent=styles['Heading1'], fontSize=18, spaceAfter=20)
-    heading_style = ParagraphStyle('Heading', parent=styles['Heading2'], fontSize=14, spaceAfter=12)
-    subhead_style = ParagraphStyle('SubHead', parent=styles['Heading3'], fontSize=12, spaceAfter=8)
-    code_style = ParagraphStyle('Code', fontName='Courier', fontSize=8, leading=10)
-    
+    title_style = ParagraphStyle(
+        "Title", parent=styles["Heading1"], fontSize=18, spaceAfter=20
+    )
+    heading_style = ParagraphStyle(
+        "Heading", parent=styles["Heading2"], fontSize=14, spaceAfter=12
+    )
+    subhead_style = ParagraphStyle(
+        "SubHead", parent=styles["Heading3"], fontSize=12, spaceAfter=8
+    )
+    code_style = ParagraphStyle("Code", fontName="Courier", fontSize=8, leading=10)
+
     # Title
     story.append(Paragraph("Experiment 005: RLM-Based Tool Creation", title_style))
-    story.append(Paragraph(f"Model: {model}", styles['Normal']))
-    story.append(Paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}", styles['Normal']))
+    story.append(Paragraph(f"Model: {model}", styles["Normal"]))
+    story.append(
+        Paragraph(
+            f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}", styles["Normal"]
+        )
+    )
     story.append(Spacer(1, 20))
-    
+
     # Summary
     story.append(Paragraph("Summary", heading_style))
-    
+
     savings = results.baseline_tokens - results.rlm_tokens
-    savings_pct = (savings / results.baseline_tokens * 100) if results.baseline_tokens > 0 else 0
-    
+    savings_pct = (
+        (savings / results.baseline_tokens * 100) if results.baseline_tokens > 0 else 0
+    )
+
     summary_data = [
         ["Metric", "Value"],
         ["Baseline Tokens", f"{results.baseline_tokens:,}"],
@@ -312,44 +341,58 @@ def generate_report(output_dir: Path, results: ExperimentResults, model: str) ->
         ["Macros Executed", str(len(results.macros))],
         ["LLM Fallbacks", str(results.llm_fallbacks)],
     ]
-    
-    table = Table(summary_data, colWidths=[2.5*inch, 2.5*inch])
-    table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
-    ]))
+
+    table = Table(summary_data, colWidths=[2.5 * inch, 2.5 * inch])
+    table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("GRID", (0, 0), (-1, -1), 1, colors.black),
+            ]
+        )
+    )
     story.append(table)
     story.append(Spacer(1, 30))
-    
+
     # Tools Section
     story.append(Paragraph("Tools Created by LLM", heading_style))
     story.append(Spacer(1, 10))
-    
+
     if results.tools:
         for i, tool in enumerate(results.tools):
-            story.append(Paragraph(f"Tool {i+1}: {tool.name}", subhead_style))
-            story.append(Paragraph(f"<b>Path:</b> {tool.file_path}", styles['Normal']))
-            story.append(Paragraph(f"<b>Description:</b> {tool.description or 'N/A'}", styles['Normal']))
-            story.append(Paragraph(f"<b>Created:</b> {tool.created_at}", styles['Normal']))
+            story.append(Paragraph(f"Tool {i + 1}: {tool.name}", subhead_style))
+            story.append(Paragraph(f"<b>Path:</b> {tool.file_path}", styles["Normal"]))
+            story.append(
+                Paragraph(
+                    f"<b>Description:</b> {tool.description or 'N/A'}", styles["Normal"]
+                )
+            )
+            story.append(
+                Paragraph(f"<b>Created:</b> {tool.created_at}", styles["Normal"])
+            )
             story.append(Spacer(1, 5))
-            story.append(Paragraph("<b>Code:</b>", styles['Normal']))
-            
+            story.append(Paragraph("<b>Code:</b>", styles["Normal"]))
+
             # Truncate long code for PDF
-            code_preview = tool.code[:1500] + "..." if len(tool.code) > 1500 else tool.code
+            code_preview = (
+                tool.code[:1500] + "..." if len(tool.code) > 1500 else tool.code
+            )
             story.append(Preformatted(code_preview, code_style))
             story.append(Spacer(1, 15))
     else:
-        story.append(Paragraph("No tools were created during this experiment.", styles['Normal']))
-    
+        story.append(
+            Paragraph("No tools were created during this experiment.", styles["Normal"])
+        )
+
     story.append(PageBreak())
-    
+
     # Macros Section
     story.append(Paragraph("Macros/Code Executed", heading_style))
     story.append(Spacer(1, 10))
-    
+
     if results.macros:
         # Group by task type
         by_type: dict[str, list[MacroRecord]] = {}
@@ -357,10 +400,14 @@ def generate_report(output_dir: Path, results: ExperimentResults, model: str) ->
             if macro.task_type not in by_type:
                 by_type[macro.task_type] = []
             by_type[macro.task_type].append(macro)
-        
+
         for task_type, macros in by_type.items():
-            story.append(Paragraph(f"Task Type: {task_type} ({len(macros)} macros)", subhead_style))
-            
+            story.append(
+                Paragraph(
+                    f"Task Type: {task_type} ({len(macros)} macros)", subhead_style
+                )
+            )
+
             # Show first few unique macros
             seen_codes = set()
             shown = 0
@@ -369,22 +416,45 @@ def generate_report(output_dir: Path, results: ExperimentResults, model: str) ->
                 if code_hash not in seen_codes and shown < 3:
                     seen_codes.add(code_hash)
                     shown += 1
-                    
-                    story.append(Paragraph(f"<b>Task {macro.task_index}:</b>", styles['Normal']))
-                    code_preview = macro.code[:800] + "..." if len(macro.code) > 800 else macro.code
+
+                    story.append(
+                        Paragraph(f"<b>Task {macro.task_index}:</b>", styles["Normal"])
+                    )
+                    code_preview = (
+                        macro.code[:800] + "..."
+                        if len(macro.code) > 800
+                        else macro.code
+                    )
                     story.append(Preformatted(code_preview, code_style))
-                    
+
                     if macro.output:
-                        output_preview = macro.output[:200] + "..." if len(macro.output) > 200 else macro.output
-                        story.append(Paragraph(f"<b>Output:</b> {output_preview}", styles['Normal']))
+                        output_preview = (
+                            macro.output[:200] + "..."
+                            if len(macro.output) > 200
+                            else macro.output
+                        )
+                        story.append(
+                            Paragraph(
+                                f"<b>Output:</b> {output_preview}", styles["Normal"]
+                            )
+                        )
                     story.append(Spacer(1, 10))
-            
+
             if len(macros) > shown:
-                story.append(Paragraph(f"... and {len(macros) - shown} more similar macros", styles['Normal']))
+                story.append(
+                    Paragraph(
+                        f"... and {len(macros) - shown} more similar macros",
+                        styles["Normal"],
+                    )
+                )
             story.append(Spacer(1, 15))
     else:
-        story.append(Paragraph("No macros were executed during this experiment.", styles['Normal']))
-    
+        story.append(
+            Paragraph(
+                "No macros were executed during this experiment.", styles["Normal"]
+            )
+        )
+
     doc.build(story)
     return pdf_path
 
@@ -424,7 +494,7 @@ def save_results(output_dir: Path, results: ExperimentResults, model: str):
             for m in results.macros[:50]  # Limit to first 50 for file size
         ],
     }
-    
+
     with open(output_dir / "results.json", "w") as f:
         json.dump(data, f, indent=2)
 
@@ -432,6 +502,7 @@ def save_results(output_dir: Path, results: ExperimentResults, model: str):
 @dataclass
 class BatchMetrics:
     """Metrics for a single batch of tasks."""
+
     batch_num: int
     tasks_in_batch: int
     cumulative_tasks: int
@@ -465,7 +536,9 @@ def run_with_batch_tracking(
         end_idx = min(start_idx + batch_size, len(tasks))
         batch_tasks = tasks[start_idx:end_idx]
 
-        tqdm.write(f"\n--- Batch {batch_num + 1}/{num_batches} (tasks {start_idx + 1}-{end_idx}) ---")
+        tqdm.write(
+            f"\n--- Batch {batch_num + 1}/{num_batches} (tasks {start_idx + 1}-{end_idx}) ---"
+        )
 
         # Run baseline for this batch
         batch_baseline = 0
@@ -481,9 +554,9 @@ def run_with_batch_tracking(
         metrics_before = rlm.get_metrics()
 
         for task in tqdm(batch_tasks, desc="  RLM", unit="task", leave=False):
-            prompt = f"""Task Type: {task['task_type']}
+            prompt = f"""Task Type: {task["task_type"]}
 
-Analyze this text: {task['text']}
+Analyze this text: {task["text"]}
 
 If this is a grammar task, check if the sentence is grammatically acceptable.
 If this is a PII task, detect any personally identifiable information.
@@ -493,9 +566,14 @@ If not, create one and save it for reuse."""
 
             try:
                 response = rlm.completion(prompt)
-                if hasattr(response, 'usage_summary') and response.usage_summary:
-                    for model_name, usage in response.usage_summary.model_usage_summaries.items():
-                        batch_rlm += usage.total_input_tokens + usage.total_output_tokens
+                if hasattr(response, "usage_summary") and response.usage_summary:
+                    for (
+                        model_name,
+                        usage,
+                    ) in response.usage_summary.model_usage_summaries.items():
+                        batch_rlm += (
+                            usage.total_input_tokens + usage.total_output_tokens
+                        )
             except Exception as e:
                 tqdm.write(f"  Error: {e}")
 
@@ -509,37 +587,69 @@ If not, create one and save it for reuse."""
             cumulative_tasks=end_idx,
             baseline_tokens=batch_baseline,
             rlm_tokens=batch_rlm,
-            hooks_count=metrics_after['hooks'],
-            replacements_count=metrics_after['replacements'],
-            llm_calls_made=metrics_after['llm_calls_made'] - metrics_before.get('llm_calls_made', 0) if batch_num > 0 else metrics_after['llm_calls_made'],
-            llm_calls_skipped=metrics_after['llm_calls_skipped'] - metrics_before.get('llm_calls_skipped', 0) if batch_num > 0 else metrics_after['llm_calls_skipped'],
+            hooks_count=metrics_after["hooks"],
+            replacements_count=metrics_after["replacements"],
+            llm_calls_made=metrics_after["llm_calls_made"]
+            - metrics_before.get("llm_calls_made", 0)
+            if batch_num > 0
+            else metrics_after["llm_calls_made"],
+            llm_calls_skipped=metrics_after["llm_calls_skipped"]
+            - metrics_before.get("llm_calls_skipped", 0)
+            if batch_num > 0
+            else metrics_after["llm_calls_skipped"],
             cumulative_baseline=cumulative_baseline,
             cumulative_rlm=cumulative_rlm,
         )
         batch_metrics.append(batch_metric)
 
         # Print batch summary
-        savings_pct = ((batch_baseline - batch_rlm) / batch_baseline * 100) if batch_baseline > 0 else 0
-        tqdm.write(f"  Batch: baseline={batch_baseline:,} rlm={batch_rlm:,} ({savings_pct:+.1f}%)")
-        tqdm.write(f"  Tools: hooks={metrics_after['hooks']} replacements={metrics_after['replacements']}")
-        tqdm.write(f"  LLM: made={batch_metric.llm_calls_made} skipped={batch_metric.llm_calls_skipped}")
+        savings_pct = (
+            ((batch_baseline - batch_rlm) / batch_baseline * 100)
+            if batch_baseline > 0
+            else 0
+        )
+        tqdm.write(
+            f"  Batch: baseline={batch_baseline:,} rlm={batch_rlm:,} ({savings_pct:+.1f}%)"
+        )
+        tqdm.write(
+            f"  Tools: hooks={metrics_after['hooks']} replacements={metrics_after['replacements']}"
+        )
+        tqdm.write(
+            f"  LLM: made={batch_metric.llm_calls_made} skipped={batch_metric.llm_calls_skipped}"
+        )
 
     return batch_metrics
 
 
 def main():
     parser = argparse.ArgumentParser(description="Experiment 005: RLM Tool Creation")
-    parser.add_argument("--model", default="ollama/llama3.2:3b", help="Model (litellm format)")
+    parser.add_argument(
+        "--model", default="ollama/llama3.2:3b", help="Model (litellm format)"
+    )
     parser.add_argument("--cola", type=int, default=20, help="Number of CoLA samples")
     parser.add_argument("--pii", type=int, default=10, help="Number of PII samples")
     parser.add_argument("--sciq", type=int, default=0, help="Number of SciQ samples")
-    parser.add_argument("--all-train", action="store_true", help="Use all training data")
-    parser.add_argument("--batch-size", type=int, default=20, help="Batch size for tracking")
-    parser.add_argument("--max-iterations", type=int, default=5, help="Max RLM iterations per task")
+    parser.add_argument(
+        "--all-train", action="store_true", help="Use all training data"
+    )
+    parser.add_argument(
+        "--batch-size", type=int, default=20, help="Batch size for tracking"
+    )
+    parser.add_argument(
+        "--max-iterations", type=int, default=5, help="Max RLM iterations per task"
+    )
     parser.add_argument("--verbose", action="store_true", help="Verbose output")
-    parser.add_argument("--tools-dir", type=str, default=None, help="Reuse existing tools directory")
-    parser.add_argument("--skip-baseline", action="store_true", help="Skip baseline run")
-    parser.add_argument("--seed-tools", action="store_true", help="Seed tools directory with pre-built hooks")
+    parser.add_argument(
+        "--tools-dir", type=str, default=None, help="Reuse existing tools directory"
+    )
+    parser.add_argument(
+        "--skip-baseline", action="store_true", help="Skip baseline run"
+    )
+    parser.add_argument(
+        "--seed-tools",
+        action="store_true",
+        help="Seed tools directory with pre-built hooks",
+    )
     args = parser.parse_args()
 
     print("=" * 60)
@@ -589,40 +699,40 @@ def main():
         # Load all training data
         cola_ds = load_dataset(DATA.COLA, Split.TRAIN)
         for item in tqdm(cola_ds, desc="  CoLA", unit="item"):
-            tasks.append({
-                "text": item.question,
-                "task_type": "grammar",
-                "expected": item.answer
-            })
+            tasks.append(
+                {"text": item.question, "task_type": "grammar", "expected": item.answer}
+            )
 
         pii_ds = load_dataset(DATA.PII_DETECTION, Split.TRAIN)
-        pii_start = len(tasks)
+        len(tasks)
         for item in tqdm(pii_ds, desc="  PII", unit="item"):
-            tasks.append({
-                "text": item.question,
-                "task_type": "pii_detection",
-                "expected": item.answer
-            })
+            tasks.append(
+                {
+                    "text": item.question,
+                    "task_type": "pii_detection",
+                    "expected": item.answer,
+                }
+            )
 
         sciq_ds = load_dataset(DATA.SCIQ, Split.TRAIN)
-        sciq_start = len(tasks)
+        len(tasks)
         for item in tqdm(sciq_ds, desc="  SciQ", unit="item"):
-            tasks.append({
-                "text": item.question,
-                "task_type": "science_qa",
-                "expected": item.answer
-            })
+            tasks.append(
+                {
+                    "text": item.question,
+                    "task_type": "science_qa",
+                    "expected": item.answer,
+                }
+            )
     else:
         # CoLA tasks
         cola_ds = load_dataset(DATA.COLA, Split.DEV)
         for i, item in enumerate(cola_ds):
             if i >= args.cola:
                 break
-            tasks.append({
-                "text": item.question,
-                "task_type": "grammar",
-                "expected": item.answer
-            })
+            tasks.append(
+                {"text": item.question, "task_type": "grammar", "expected": item.answer}
+            )
 
         # PII tasks
         if args.pii > 0:
@@ -630,11 +740,13 @@ def main():
             for i, item in enumerate(pii_ds):
                 if i >= args.pii:
                     break
-                tasks.append({
-                    "text": item.question,
-                    "task_type": "pii_detection",
-                    "expected": item.answer
-                })
+                tasks.append(
+                    {
+                        "text": item.question,
+                        "task_type": "pii_detection",
+                        "expected": item.answer,
+                    }
+                )
 
         # SciQ tasks
         if args.sciq > 0:
@@ -642,11 +754,13 @@ def main():
             for i, item in enumerate(sciq_ds):
                 if i >= args.sciq:
                     break
-                tasks.append({
-                    "text": item.question,
-                    "task_type": "science_qa",
-                    "expected": item.answer
-                })
+                tasks.append(
+                    {
+                        "text": item.question,
+                        "task_type": "science_qa",
+                        "expected": item.answer,
+                    }
+                )
 
     print(f"Total: {len(tasks)} tasks")
     print()
@@ -675,7 +789,7 @@ def main():
 
     # Get final metrics
     metrics = rlm.get_metrics()
-    results.tool_executions = metrics['total_tools']
+    results.tool_executions = metrics["total_tools"]
 
     # Accumulate totals from batches
     results.baseline_tokens = sum(b.baseline_tokens for b in batch_metrics)
@@ -686,12 +800,18 @@ def main():
     print("=" * 60)
     print("BATCH ACCUMULATION SUMMARY")
     print("=" * 60)
-    print(f"{'Batch':<6} {'Tasks':<8} {'Baseline':<12} {'RLM':<12} {'Savings':<10} {'Hooks':<6} {'Repl':<6}")
+    print(
+        f"{'Batch':<6} {'Tasks':<8} {'Baseline':<12} {'RLM':<12} {'Savings':<10} {'Hooks':<6} {'Repl':<6}"
+    )
     print("-" * 60)
     for b in batch_metrics:
         savings = b.baseline_tokens - b.rlm_tokens
-        savings_pct = (savings / b.baseline_tokens * 100) if b.baseline_tokens > 0 else 0
-        print(f"{b.batch_num:<6} {b.cumulative_tasks:<8} {b.cumulative_baseline:<12,} {b.cumulative_rlm:<12,} {savings_pct:>+8.1f}% {b.hooks_count:<6} {b.replacements_count:<6}")
+        savings_pct = (
+            (savings / b.baseline_tokens * 100) if b.baseline_tokens > 0 else 0
+        )
+        print(
+            f"{b.batch_num:<6} {b.cumulative_tasks:<8} {b.cumulative_baseline:<12,} {b.cumulative_rlm:<12,} {savings_pct:>+8.1f}% {b.hooks_count:<6} {b.replacements_count:<6}"
+        )
     print()
 
     # Save batch metrics to JSON
@@ -713,30 +833,36 @@ def main():
     with open(output_dir / "batch_metrics.json", "w") as f:
         json.dump(batch_data, f, indent=2)
 
-    print(f"Tools: hooks={metrics['hooks']}, replacements={metrics['replacements']}, utilities={metrics['utilities']}")
+    print(
+        f"Tools: hooks={metrics['hooks']}, replacements={metrics['replacements']}, utilities={metrics['utilities']}"
+    )
     print(f"Hook executions: {metrics['hook_executions']}")
-    print(f"LLM calls: made={metrics['llm_calls_made']}, skipped={metrics['llm_calls_skipped']}")
+    print(
+        f"LLM calls: made={metrics['llm_calls_made']}, skipped={metrics['llm_calls_skipped']}"
+    )
     print(f"Replacement tool uses: {metrics['replacement_uses']}")
     print()
-    
+
     # Collect tools
     print("Collecting tools...")
     collect_tools(tools_dir, results)
     print(f"Found {len(results.tools)} tools")
     print()
-    
+
     # Generate report
     print("Generating report...")
     pdf_path = generate_report(output_dir, results, args.model)
     save_results(output_dir, results, args.model)
-    
+
     # Summary
     print()
     print("=" * 60)
     print("SUMMARY")
     print("=" * 60)
     savings = results.baseline_tokens - results.rlm_tokens
-    savings_pct = (savings / results.baseline_tokens * 100) if results.baseline_tokens > 0 else 0
+    savings_pct = (
+        (savings / results.baseline_tokens * 100) if results.baseline_tokens > 0 else 0
+    )
 
     print(f"Baseline: {results.baseline_tokens:,} tokens")
     print(f"RLM: {results.rlm_tokens:,} tokens")
@@ -750,7 +876,7 @@ def main():
     print(f"  - Replacements: {metrics['replacements']}")
     print(f"  - Utilities: {metrics['utilities']}")
     print()
-    print(f"Hook System Performance:")
+    print("Hook System Performance:")
     print(f"  - Hook executions: {metrics['hook_executions']}")
     print(f"  - LLM calls made: {metrics['llm_calls_made']}")
     print(f"  - LLM calls SKIPPED (replaced by tools): {metrics['llm_calls_skipped']}")
@@ -758,7 +884,7 @@ def main():
     print()
     print(f"Report: {pdf_path}")
     print(f"Tools directory: {tools_dir}")
-    
+
 
 if __name__ == "__main__":
     main()

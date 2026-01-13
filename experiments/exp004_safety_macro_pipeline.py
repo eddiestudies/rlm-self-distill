@@ -41,6 +41,7 @@ from self_distill.datasets import DATA, load_dataset, Split
 @dataclass
 class SafetyResult:
     """Result from safety macro processing."""
+
     is_safe: bool
     original_text: str
     sanitized_text: str
@@ -51,6 +52,7 @@ class SafetyResult:
 @dataclass
 class CompletionResult:
     """Result from completion rule processing."""
+
     handled_by_tool: bool
     tool_name: str | None
     result: str
@@ -60,6 +62,7 @@ class CompletionResult:
 @dataclass
 class PipelineResult:
     """Full pipeline execution result."""
+
     task_type: str
     safety_result: SafetyResult
     completion_result: CompletionResult
@@ -76,11 +79,11 @@ class SafetyMacro:
 
     def __init__(self):
         self.pii_patterns = {
-            "EMAIL": r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b',
-            "PHONE": r'\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}',
-            "SSN": r'\b\d{3}-\d{2}-\d{4}\b',
-            "IP_ADDRESS": r'\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b',
-            "CREDIT_CARD": r'\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b',
+            "EMAIL": r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b",
+            "PHONE": r"\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}",
+            "SSN": r"\b\d{3}-\d{2}-\d{4}\b",
+            "IP_ADDRESS": r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b",
+            "CREDIT_CARD": r"\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b",
         }
 
     def check_for_pii(self, text: str) -> list[dict]:
@@ -89,12 +92,14 @@ class SafetyMacro:
         for pii_type, pattern in self.pii_patterns.items():
             matches = re.finditer(pattern, text, re.IGNORECASE)
             for match in matches:
-                found.append({
-                    "type": pii_type,
-                    "text": match.group(),
-                    "start": match.start(),
-                    "end": match.end()
-                })
+                found.append(
+                    {
+                        "type": pii_type,
+                        "text": match.group(),
+                        "start": match.start(),
+                        "end": match.end(),
+                    }
+                )
         return found
 
     def mask_pii(self, text: str, pii_items: list[dict]) -> str:
@@ -105,7 +110,7 @@ class SafetyMacro:
         masked = text
         for item in sorted_pii:
             mask = f"[{item['type']}_MASKED]"
-            masked = masked[:item["start"]] + mask + masked[item["end"]:]
+            masked = masked[: item["start"]] + mask + masked[item["end"] :]
 
         return masked
 
@@ -123,7 +128,7 @@ class SafetyMacro:
                 original_text=text,
                 sanitized_text=sanitized,
                 pii_found=pii_found,
-                masking_applied=True
+                masking_applied=True,
             )
         else:
             return SafetyResult(
@@ -131,7 +136,7 @@ class SafetyMacro:
                 original_text=text,
                 sanitized_text=text,
                 pii_found=[],
-                masking_applied=False
+                masking_applied=False,
             )
 
 
@@ -156,7 +161,9 @@ class CompletionRules:
                         continue
                     tool_name = tool_file.stem
                     try:
-                        spec = importlib.util.spec_from_file_location(tool_name, tool_file)
+                        spec = importlib.util.spec_from_file_location(
+                            tool_name, tool_file
+                        )
                         if spec and spec.loader:
                             module = importlib.util.module_from_spec(spec)
                             spec.loader.exec_module(module)
@@ -171,7 +178,13 @@ class CompletionRules:
             return "pii_detection"
 
         # Check for grammar-related keywords
-        grammar_keywords = ["grammatical", "grammar", "acceptable", "sentence", "correct"]
+        grammar_keywords = [
+            "grammatical",
+            "grammar",
+            "acceptable",
+            "sentence",
+            "correct",
+        ]
         if any(kw in text.lower() for kw in grammar_keywords):
             return "grammar"
 
@@ -183,7 +196,12 @@ class CompletionRules:
         if task_type == "grammar" and "basic_grammar" in self.tools:
             return True
         if task_type == "pii_detection":
-            pii_tools = ["email_detector", "phone_detector", "ssn_detector", "ip_detector"]
+            pii_tools = [
+                "email_detector",
+                "phone_detector",
+                "ssn_detector",
+                "ip_detector",
+            ]
             return any(t in self.tools for t in pii_tools)
         return False
 
@@ -195,25 +213,32 @@ class CompletionRules:
                 return CompletionResult(
                     handled_by_tool=True,
                     tool_name="basic_grammar",
-                    result=json.dumps(result) if isinstance(result, dict) else str(result)
+                    result=json.dumps(result)
+                    if isinstance(result, dict)
+                    else str(result),
                 )
             except Exception as e:
                 return CompletionResult(
-                    handled_by_tool=False,
-                    tool_name=None,
-                    result=f"Tool error: {e}"
+                    handled_by_tool=False, tool_name=None, result=f"Tool error: {e}"
                 )
 
         if task_type == "pii_detection":
             # Run all PII detectors
             all_detections = []
             tools_used = []
-            for tool_name in ["email_detector", "phone_detector", "ssn_detector", "ip_detector"]:
+            for tool_name in [
+                "email_detector",
+                "phone_detector",
+                "ssn_detector",
+                "ip_detector",
+            ]:
                 if tool_name in self.tools:
                     try:
                         result = self.tools[tool_name](text)
                         if result:
-                            all_detections.extend(result if isinstance(result, list) else [result])
+                            all_detections.extend(
+                                result if isinstance(result, list) else [result]
+                            )
                             tools_used.append(tool_name)
                     except Exception:
                         pass
@@ -221,14 +246,10 @@ class CompletionRules:
             return CompletionResult(
                 handled_by_tool=bool(tools_used),
                 tool_name=",".join(tools_used) if tools_used else None,
-                result=json.dumps(all_detections)
+                result=json.dumps(all_detections),
             )
 
-        return CompletionResult(
-            handled_by_tool=False,
-            tool_name=None,
-            result=""
-        )
+        return CompletionResult(handled_by_tool=False, tool_name=None, result="")
 
 
 class SafetyMacroPipeline:
@@ -272,7 +293,9 @@ class SafetyMacroPipeline:
         task_type = self.completion_rules.classify_task(text, is_pii_task)
 
         # Step 2: Try Completion Rules
-        completion_result = CompletionResult(handled_by_tool=False, tool_name=None, result="")
+        completion_result = CompletionResult(
+            handled_by_tool=False, tool_name=None, result=""
+        )
 
         if self.completion_rules.can_handle(task_type):
             # For PII tasks, we already have the detection from safety macro
@@ -280,12 +303,12 @@ class SafetyMacroPipeline:
                 completion_result = CompletionResult(
                     handled_by_tool=True,
                     tool_name="safety_macro",
-                    result=json.dumps(safety_result.pii_found)
+                    result=json.dumps(safety_result.pii_found),
                 )
             else:
                 completion_result = self.completion_rules.execute(
                     safety_result.sanitized_text,  # Use sanitized text!
-                    task_type
+                    task_type,
                 )
 
         if completion_result.handled_by_tool:
@@ -295,7 +318,7 @@ class SafetyMacroPipeline:
                 safety_result=safety_result,
                 completion_result=completion_result,
                 llm_fallback_used=False,
-                total_tokens=0  # No LLM tokens used
+                total_tokens=0,  # No LLM tokens used
             )
 
         # Step 3: LLM Fallback (only sees SANITIZED text)
@@ -307,7 +330,7 @@ Note: Any [TYPE_MASKED] tokens indicate redacted sensitive information.
 
 Text: {safety_result.sanitized_text}
 
-Task: {task_hint if task_hint else 'Provide analysis'}"""
+Task: {task_hint if task_hint else "Provide analysis"}"""
 
         response = self.client.completion(prompt, self.model)
         usage = self.client.get_last_usage()
@@ -318,7 +341,7 @@ Task: {task_hint if task_hint else 'Provide analysis'}"""
             handled_by_tool=False,
             tool_name=None,
             result=response,
-            tokens_used=llm_tokens
+            tokens_used=llm_tokens,
         )
 
         return PipelineResult(
@@ -327,7 +350,7 @@ Task: {task_hint if task_hint else 'Provide analysis'}"""
             completion_result=completion_result,
             llm_fallback_used=True,
             llm_fallback_tokens=llm_tokens,
-            total_tokens=llm_tokens
+            total_tokens=llm_tokens,
         )
 
 
@@ -345,7 +368,7 @@ def create_base_tools(tools_dir: Path, client: OllamaClient, model: str) -> int:
 - 'reason': str - explanation if not acceptable
 
 Check for: subject-verb agreement, proper punctuation, sentence structure.
-Include: import re at top, def run(text: str) -> dict:"""
+Include: import re at top, def run(text: str) -> dict:""",
         },
         {
             "name": "email_detector",
@@ -353,7 +376,7 @@ Include: import re at top, def run(text: str) -> dict:"""
             "description": "Detect email addresses in text",
             "prompt": """Create a Python function called 'run' that takes a string 'text' and returns a list of dicts.
 Each dict should have: 'type': 'EMAIL', 'text': the matched email, 'start': start index, 'end': end index.
-Use regex to find email patterns. Include: import re at top, def run(text: str) -> list:"""
+Use regex to find email patterns. Include: import re at top, def run(text: str) -> list:""",
         },
         {
             "name": "phone_detector",
@@ -361,7 +384,7 @@ Use regex to find email patterns. Include: import re at top, def run(text: str) 
             "description": "Detect phone numbers in text",
             "prompt": """Create a Python function called 'run' that takes a string 'text' and returns a list of dicts.
 Each dict should have: 'type': 'PHONE', 'text': the matched phone, 'start': start index, 'end': end index.
-Handle formats: (123) 456-7890, 123-456-7890, 123.456.7890. Include: import re, def run(text: str) -> list:"""
+Handle formats: (123) 456-7890, 123-456-7890, 123.456.7890. Include: import re, def run(text: str) -> list:""",
         },
         {
             "name": "ssn_detector",
@@ -369,7 +392,7 @@ Handle formats: (123) 456-7890, 123-456-7890, 123.456.7890. Include: import re, 
             "description": "Detect Social Security Numbers in text",
             "prompt": """Create a Python function called 'run' that takes a string 'text' and returns a list of dicts.
 Each dict should have: 'type': 'SSN', 'text': the matched SSN, 'start': start index, 'end': end index.
-SSN format: XXX-XX-XXXX. Include: import re at top, def run(text: str) -> list:"""
+SSN format: XXX-XX-XXXX. Include: import re at top, def run(text: str) -> list:""",
         },
         {
             "name": "ip_detector",
@@ -377,8 +400,8 @@ SSN format: XXX-XX-XXXX. Include: import re at top, def run(text: str) -> list:"
             "description": "Detect IP addresses in text",
             "prompt": """Create a Python function called 'run' that takes a string 'text' and returns a list of dicts.
 Each dict should have: 'type': 'IP', 'text': the matched IP, 'start': start index, 'end': end index.
-IPv4 format: X.X.X.X where X is 0-255. Include: import re at top, def run(text: str) -> list:"""
-        }
+IPv4 format: X.X.X.X where X is 0-255. Include: import re at top, def run(text: str) -> list:""",
+        },
     ]
 
     for tool_info in tqdm(tools_to_create, desc="Creating tools", unit="tool"):
@@ -388,7 +411,7 @@ IPv4 format: X.X.X.X where X is 0-255. Include: import re at top, def run(text: 
         tool_path = category_dir / f"{tool_info['name']}.py"
 
         prompt = f"""Write ONLY Python code, no markdown, no explanation.
-{tool_info['prompt']}
+{tool_info["prompt"]}
 
 Output ONLY the Python code:"""
 
@@ -405,7 +428,9 @@ Output ONLY the Python code:"""
     return total_tokens
 
 
-def run_baseline(client: OllamaClient, model: str, tasks: list[dict]) -> tuple[int, list]:
+def run_baseline(
+    client: OllamaClient, model: str, tasks: list[dict]
+) -> tuple[int, list]:
     """Run baseline LLM on all tasks (sees raw data)."""
     total_tokens = 0
     results = []
@@ -413,9 +438,9 @@ def run_baseline(client: OllamaClient, model: str, tasks: list[dict]) -> tuple[i
     for i, task in enumerate(tqdm(tasks, desc="Baseline", unit="task")):
         prompt = f"""Analyze the following text:
 
-Text: {task['text']}
+Text: {task["text"]}
 
-Task: {task['task_type']}
+Task: {task["task_type"]}
 
 Provide your analysis."""
 
@@ -424,12 +449,14 @@ Provide your analysis."""
         tokens = usage.total_input_tokens + usage.total_output_tokens
         total_tokens += tokens
 
-        results.append({
-            "task_idx": i,
-            "task_type": task["task_type"],
-            "tokens": tokens,
-            "saw_raw_pii": True  # Baseline sees everything
-        })
+        results.append(
+            {
+                "task_idx": i,
+                "task_type": task["task_type"],
+                "tokens": tokens,
+                "saw_raw_pii": True,  # Baseline sees everything
+            }
+        )
 
     return total_tokens, results
 
@@ -441,20 +468,30 @@ def generate_report(output_dir: Path, results: dict):
     styles = getSampleStyleSheet()
     story = []
 
-    title_style = ParagraphStyle('Title', parent=styles['Heading1'], fontSize=18, spaceAfter=20)
-    heading_style = ParagraphStyle('Heading', parent=styles['Heading2'], fontSize=14, spaceAfter=12)
+    title_style = ParagraphStyle(
+        "Title", parent=styles["Heading1"], fontSize=18, spaceAfter=20
+    )
+    heading_style = ParagraphStyle(
+        "Heading", parent=styles["Heading2"], fontSize=14, spaceAfter=12
+    )
 
     story.append(Paragraph("Experiment 004: Safety Macro Pipeline", title_style))
-    story.append(Paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}", styles['Normal']))
+    story.append(
+        Paragraph(
+            f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}", styles["Normal"]
+        )
+    )
     story.append(Spacer(1, 20))
 
     # Key insight
     story.append(Paragraph("Key Safety Insight", heading_style))
-    story.append(Paragraph(
-        f"The safety macro masked PII in {results['pipeline']['pii_masked']} inputs before LLM processing. "
-        f"The LLM never saw raw PII data in these cases.",
-        styles['Normal']
-    ))
+    story.append(
+        Paragraph(
+            f"The safety macro masked PII in {results['pipeline']['pii_masked']} inputs before LLM processing. "
+            f"The LLM never saw raw PII data in these cases.",
+            styles["Normal"],
+        )
+    )
     story.append(Spacer(1, 15))
 
     # Results table
@@ -462,27 +499,40 @@ def generate_report(output_dir: Path, results: dict):
 
     data = [
         ["Metric", "Baseline", "Pipeline", "Difference"],
-        ["Total Tokens", f"{results['baseline']['total_tokens']:,}",
-         f"{results['pipeline']['total_tokens']:,}",
-         f"{results['pipeline']['total_tokens'] - results['baseline']['total_tokens']:+,}"],
-        ["LLM Tokens", f"{results['baseline']['total_tokens']:,}",
-         f"{results['pipeline']['llm_tokens']:,}",
-         f"{results['pipeline']['llm_tokens'] - results['baseline']['total_tokens']:+,}"],
-        ["Raw PII Exposures", f"{results['baseline']['raw_pii_exposures']}",
-         f"{results['pipeline']['raw_pii_exposures']}",
-         f"{results['pipeline']['raw_pii_exposures'] - results['baseline']['raw_pii_exposures']:+}"],
+        [
+            "Total Tokens",
+            f"{results['baseline']['total_tokens']:,}",
+            f"{results['pipeline']['total_tokens']:,}",
+            f"{results['pipeline']['total_tokens'] - results['baseline']['total_tokens']:+,}",
+        ],
+        [
+            "LLM Tokens",
+            f"{results['baseline']['total_tokens']:,}",
+            f"{results['pipeline']['llm_tokens']:,}",
+            f"{results['pipeline']['llm_tokens'] - results['baseline']['total_tokens']:+,}",
+        ],
+        [
+            "Raw PII Exposures",
+            f"{results['baseline']['raw_pii_exposures']}",
+            f"{results['pipeline']['raw_pii_exposures']}",
+            f"{results['pipeline']['raw_pii_exposures'] - results['baseline']['raw_pii_exposures']:+}",
+        ],
     ]
 
-    table = Table(data, colWidths=[2*inch, 1.5*inch, 1.5*inch, 1.5*inch])
-    table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 11),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
-    ]))
+    table = Table(data, colWidths=[2 * inch, 1.5 * inch, 1.5 * inch, 1.5 * inch])
+    table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, 0), 11),
+                ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
+                ("GRID", (0, 0), (-1, -1), 1, colors.black),
+            ]
+        )
+    )
     story.append(table)
     story.append(Spacer(1, 20))
 
@@ -491,45 +541,67 @@ def generate_report(output_dir: Path, results: dict):
 
     pipeline_data = [
         ["Metric", "Count"],
-        ["Total Tasks", str(results['pipeline']['total_tasks'])],
-        ["PII Masked (Safety Macro)", str(results['pipeline']['pii_masked'])],
-        ["Handled by Tools", str(results['pipeline']['tool_handled'])],
-        ["LLM Fallbacks", str(results['pipeline']['llm_fallbacks'])],
+        ["Total Tasks", str(results["pipeline"]["total_tasks"])],
+        ["PII Masked (Safety Macro)", str(results["pipeline"]["pii_masked"])],
+        ["Handled by Tools", str(results["pipeline"]["tool_handled"])],
+        ["LLM Fallbacks", str(results["pipeline"]["llm_fallbacks"])],
         ["Tool Creation Tokens", f"{results['pipeline']['tool_creation_tokens']:,}"],
     ]
 
-    table2 = Table(pipeline_data, colWidths=[3*inch, 2*inch])
-    table2.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
-    ]))
+    table2 = Table(pipeline_data, colWidths=[3 * inch, 2 * inch])
+    table2.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("GRID", (0, 0), (-1, -1), 1, colors.black),
+            ]
+        )
+    )
     story.append(table2)
     story.append(Spacer(1, 20))
 
     # Savings
-    savings = results['baseline']['total_tokens'] - results['pipeline']['total_tokens']
-    savings_pct = (savings / results['baseline']['total_tokens'] * 100) if results['baseline']['total_tokens'] > 0 else 0
+    savings = results["baseline"]["total_tokens"] - results["pipeline"]["total_tokens"]
+    savings_pct = (
+        (savings / results["baseline"]["total_tokens"] * 100)
+        if results["baseline"]["total_tokens"] > 0
+        else 0
+    )
 
     story.append(Paragraph("Summary", heading_style))
     if savings > 0:
-        story.append(Paragraph(f"Token Savings: {savings:,} tokens ({savings_pct:.1f}%)", styles['Normal']))
+        story.append(
+            Paragraph(
+                f"Token Savings: {savings:,} tokens ({savings_pct:.1f}%)",
+                styles["Normal"],
+            )
+        )
     else:
-        story.append(Paragraph(f"Token Overhead: {-savings:,} tokens ({-savings_pct:.1f}%)", styles['Normal']))
+        story.append(
+            Paragraph(
+                f"Token Overhead: {-savings:,} tokens ({-savings_pct:.1f}%)",
+                styles["Normal"],
+            )
+        )
 
-    story.append(Paragraph(
-        f"PII Protection: {results['pipeline']['pii_masked']} inputs had PII masked before LLM processing",
-        styles['Normal']
-    ))
+    story.append(
+        Paragraph(
+            f"PII Protection: {results['pipeline']['pii_masked']} inputs had PII masked before LLM processing",
+            styles["Normal"],
+        )
+    )
 
     doc.build(story)
     return pdf_path
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Experiment 004: Safety Macro Pipeline")
+    parser = argparse.ArgumentParser(
+        description="Experiment 004: Safety Macro Pipeline"
+    )
     parser.add_argument("--model", default="llama3.2:3b", help="Ollama model name")
     parser.add_argument("--cola", type=int, default=50, help="Number of CoLA samples")
     parser.add_argument("--pii", type=int, default=30, help="Number of PII samples")
@@ -568,11 +640,9 @@ def main():
     for i, item in enumerate(cola_ds):
         if i >= args.cola:
             break
-        tasks.append({
-            "text": item.question,
-            "task_type": "grammar",
-            "expected": item.answer
-        })
+        tasks.append(
+            {"text": item.question, "task_type": "grammar", "expected": item.answer}
+        )
 
     # PII tasks (synthetic with actual PII)
     pii_examples = [
@@ -589,11 +659,13 @@ def main():
     ]
 
     for i in range(args.pii):
-        tasks.append({
-            "text": pii_examples[i % len(pii_examples)],
-            "task_type": "pii_detection",
-            "expected": "detect_pii"
-        })
+        tasks.append(
+            {
+                "text": pii_examples[i % len(pii_examples)],
+                "task_type": "pii_detection",
+                "expected": "detect_pii",
+            }
+        )
 
     print(f"Loaded {len(tasks)} tasks")
     print()
@@ -607,8 +679,11 @@ def main():
     # Run baseline (LLM sees raw data)
     print("--- Running Baseline (LLM sees raw PII) ---")
     baseline_tokens, baseline_results = run_baseline(client, args.model, tasks)
-    baseline_pii_exposures = sum(1 for r in baseline_results if r["saw_raw_pii"] and
-                                  safety_macro.check_for_pii(tasks[r["task_idx"]]["text"]))
+    baseline_pii_exposures = sum(
+        1
+        for r in baseline_results
+        if r["saw_raw_pii"] and safety_macro.check_for_pii(tasks[r["task_idx"]]["text"])
+    )
     print(f"Baseline tokens: {baseline_tokens:,}")
     print(f"Baseline raw PII exposures: {baseline_pii_exposures}")
     print()
@@ -622,7 +697,11 @@ def main():
     for i, task in pbar:
         result = pipeline.process(task["text"], task["task_type"])
         pipeline_results.append(result)
-        pbar.set_postfix(masked=pipeline.pii_masked_count, tools=pipeline.tool_handled_count, llm=pipeline.llm_fallback_count)
+        pbar.set_postfix(
+            masked=pipeline.pii_masked_count,
+            tools=pipeline.tool_handled_count,
+            llm=pipeline.llm_fallback_count,
+        )
 
     # Calculate pipeline tokens (tool creation + LLM fallbacks)
     pipeline_total_tokens = tool_creation_tokens + pipeline.total_llm_tokens
@@ -641,11 +720,11 @@ def main():
             "model": args.model,
             "timestamp": timestamp,
             "cola_samples": args.cola,
-            "pii_samples": args.pii
+            "pii_samples": args.pii,
         },
         "baseline": {
             "total_tokens": baseline_tokens,
-            "raw_pii_exposures": baseline_pii_exposures
+            "raw_pii_exposures": baseline_pii_exposures,
         },
         "pipeline": {
             "total_tokens": pipeline_total_tokens,
@@ -655,8 +734,8 @@ def main():
             "pii_masked": pipeline.pii_masked_count,
             "tool_handled": pipeline.tool_handled_count,
             "llm_fallbacks": pipeline.llm_fallback_count,
-            "raw_pii_exposures": 0  # Pipeline never exposes raw PII to LLM
-        }
+            "raw_pii_exposures": 0,  # Pipeline never exposes raw PII to LLM
+        },
     }
 
     # Save results
@@ -675,7 +754,9 @@ def main():
     savings = baseline_tokens - pipeline_total_tokens
     savings_pct = (savings / baseline_tokens * 100) if baseline_tokens > 0 else 0
 
-    print(f"Baseline: {baseline_tokens:,} tokens (raw PII exposed: {baseline_pii_exposures})")
+    print(
+        f"Baseline: {baseline_tokens:,} tokens (raw PII exposed: {baseline_pii_exposures})"
+    )
     print(f"Pipeline: {pipeline_total_tokens:,} tokens (raw PII exposed: 0)")
 
     if savings > 0:
@@ -684,8 +765,10 @@ def main():
         print(f"Overhead: {-savings:,} tokens ({-savings_pct:.1f}%)")
 
     print()
-    print(f"SAFETY: {pipeline.pii_masked_count} inputs had PII masked before LLM processing")
-    print(f"        The LLM never saw raw PII in these cases.")
+    print(
+        f"SAFETY: {pipeline.pii_masked_count} inputs had PII masked before LLM processing"
+    )
+    print("        The LLM never saw raw PII in these cases.")
     print()
     print(f"Report: {pdf_path}")
     print(f"Results: {output_dir / 'results.json'}")

@@ -329,6 +329,7 @@ class SelfDistillRLM(RLM):
     def _load_tool_module(self, category: str, name: str):
         """Load a tool module from disk."""
         import importlib.util
+
         path = self.tools_dir / category / f"{name}.py"
         if not path.exists():
             return None
@@ -360,7 +361,7 @@ class SelfDistillRLM(RLM):
 
         for hook_name in hooks:
             hook_module = self._load_tool_module("pre_completion", hook_name)
-            if hook_module is None or not hasattr(hook_module, 'check'):
+            if hook_module is None or not hasattr(hook_module, "check"):
                 continue
 
             self._hook_executions += 1
@@ -372,10 +373,14 @@ class SelfDistillRLM(RLM):
                 if should_replace:
                     # Look for matching replacement tool
                     replacement = self._load_tool_module("replacements", hook_name)
-                    if replacement and hasattr(replacement, 'run'):
+                    if replacement and hasattr(replacement, "run"):
                         self._replacement_uses += 1
                         result = replacement.run(text)
-                        return {"action": "replace", "tool": hook_name, "result": result}
+                        return {
+                            "action": "replace",
+                            "tool": hook_name,
+                            "result": result,
+                        }
 
             except Exception as e:
                 print(f"Hook {hook_name} error: {e}")
@@ -392,14 +397,14 @@ class SelfDistillRLM(RLM):
         """
         # Extract text from prompt
         if isinstance(prompt, dict):
-            text = prompt.get('text', prompt.get('content', str(prompt)))
+            text = prompt.get("text", prompt.get("content", str(prompt)))
         else:
             text = str(prompt)
 
         # Run pre-completion hooks
         hook_result = self._run_pre_completion_hooks(text)
 
-        if hook_result['action'] == 'replace':
+        if hook_result["action"] == "replace":
             # Skip LLM - return a mock completion with the tool result
             self._llm_calls_skipped += 1
 
@@ -423,11 +428,11 @@ class SelfDistillRLM(RLM):
             return MockCompletion(
                 root_model=self.model,
                 prompt=text,
-                response=str(hook_result['result']),
+                response=str(hook_result["result"]),
                 usage_summary=MockUsageSummary(model_usage_summaries={}),
                 execution_time=0.0,
-                replaced_by_tool=hook_result['tool'],
-                tool_result=hook_result['result'],
+                replaced_by_tool=hook_result["tool"],
+                tool_result=hook_result["result"],
             )
 
         # Proceed with normal LLM completion
