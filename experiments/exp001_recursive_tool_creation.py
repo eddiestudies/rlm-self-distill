@@ -11,7 +11,6 @@ Runs on mixed CoLA (grammaticality) and PII (detection) datasets.
 """
 
 import json
-import os
 import random
 from dataclasses import dataclass, field
 from datetime import datetime

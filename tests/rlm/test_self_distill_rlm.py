@@ -1,7 +1,6 @@
 import os
 import tempfile
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -225,7 +224,7 @@ class TestSelfDistillRLMInit:
         mock_rlm_init.return_value = None
         tools_path = os.path.join(tools_dir, "test_tools")
 
-        rlm = SelfDistillRLM(tools_dir=tools_path)
+        SelfDistillRLM(tools_dir=tools_path)
 
         assert os.path.isdir(tools_path)
         assert os.path.isdir(os.path.join(tools_path, "pre_completion"))
@@ -260,7 +259,7 @@ class TestSelfDistillRLMInit:
     def test_init_calls_parent_with_correct_args(self, mock_rlm_init, tools_dir):
         mock_rlm_init.return_value = None
 
-        rlm = SelfDistillRLM(
+        SelfDistillRLM(
             model="ollama/test:1b",
             tools_dir=tools_dir,
             max_iterations=20,
@@ -283,7 +282,7 @@ class TestSelfDistillRLMInit:
     def test_init_passes_extra_kwargs(self, mock_rlm_init, tools_dir):
         mock_rlm_init.return_value = None
 
-        rlm = SelfDistillRLM(tools_dir=tools_dir, custom_kwarg="custom_value")
+        SelfDistillRLM(tools_dir=tools_dir, custom_kwarg="custom_value")
 
         call_kwargs = mock_rlm_init.call_args[1]
         assert call_kwargs["custom_kwarg"] == "custom_value"

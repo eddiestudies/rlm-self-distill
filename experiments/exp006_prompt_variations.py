@@ -26,10 +26,9 @@ Features:
 import argparse
 import json
 import time
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any
 
 from tqdm import tqdm
 from reportlab.lib import colors
@@ -430,7 +429,7 @@ If not, and this is a repeatable pattern, consider creating one."""
                 tqdm.write(f"  Task {i} error: {e}")
 
         # Update progress bar with stats
-        task_time = time.time() - task_start
+        time.time() - task_start
         elapsed = time.time() - start_time
         avg_time = elapsed / (i + 1)
         remaining = avg_time * (len(tasks) - i - 1)

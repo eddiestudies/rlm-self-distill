@@ -1,7 +1,6 @@
 import json
 
 import polars as pl
-import pytest
 
 from self_distill.datasets import DATA, load_dataset
 from self_distill.datasets.base import DatasetItem, Split

@@ -4,7 +4,7 @@ import polars as pl
 import pytest
 
 from self_distill.datasets import DATA, load_dataset
-from self_distill.datasets.base import DatasetItem, Split
+from self_distill.datasets.base import Split
 from self_distill.datasets.sciq import (
     DEFAULT_DEV_RATIO,
     DEFAULT_SEED,
@@ -164,7 +164,7 @@ class TestSciQDatasetLoad:
         with patch("self_distill.datasets.sciq.pl.read_parquet") as mock_read:
             mock_read.return_value = mock_sciq_data
             ds = SciQDataset(Split.DEV)
-            data = ds.load()
+            ds.load()
 
             mock_read.assert_called_once_with(SCIQ_SPLITS["validation"])
 
@@ -172,7 +172,7 @@ class TestSciQDatasetLoad:
         with patch("self_distill.datasets.sciq.pl.read_parquet") as mock_read:
             mock_read.return_value = mock_sciq_data
             ds = SciQDataset(Split.TEST)
-            data = ds.load()
+            ds.load()
 
             mock_read.assert_called_once_with(SCIQ_SPLITS["test"])
 

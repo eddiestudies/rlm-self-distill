@@ -768,7 +768,7 @@ def main():
     print(
         f"SAFETY: {pipeline.pii_masked_count} inputs had PII masked before LLM processing"
     )
-    print(f"        The LLM never saw raw PII in these cases.")
+    print("        The LLM never saw raw PII in these cases.")
     print()
     print(f"Report: {pdf_path}")
     print(f"Results: {output_dir / 'results.json'}")

@@ -11,7 +11,7 @@ Generates:
 
 import json
 import random
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -32,7 +32,6 @@ from reportlab.platypus import (
 
 from self_distill import (
     DATA,
-    CallType,
     ExperimentTracker,
     OllamaClient,
     load_dataset,
@@ -41,13 +40,11 @@ from self_distill import (
 # Import from exp001
 from experiments.exp001_recursive_tool_creation import (
     RECURSIVE_TOOL_SYSTEM_PROMPT,
-    ExperimentOutputManager,
     TaskItem,
     ToolDefinition,
     format_task_prompt,
     parse_tool_usages,
     parse_tools_from_response,
-    estimate_tokens,
 )
 
 
@@ -359,7 +356,7 @@ class ScalingExperiment:
         self.batch_results.append(result)
 
         # Print summary
-        print(f"\n--- Batch Summary ---")
+        print("\n--- Batch Summary ---")
         print(
             f"Direct LM: {direct_tokens:,} tokens ({result.tokens_per_task_direct:.1f}/task)"
         )

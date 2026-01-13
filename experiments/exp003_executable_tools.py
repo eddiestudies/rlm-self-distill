@@ -24,13 +24,12 @@ import traceback
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from tqdm import tqdm
 
 from self_distill import (
     DATA,
-    CallType,
     ExperimentTracker,
     OllamaClient,
     load_dataset,
@@ -704,7 +703,7 @@ def run_experiment(
     # Generate report
     print("\n--- Generating Report ---")
     report_path = experiment.generate_report(baseline, with_tools, tasks)
-    results_path = experiment.save_results(baseline, with_tools)
+    experiment.save_results(baseline, with_tools)
 
     # Summary
     print("\n" + "=" * 60)

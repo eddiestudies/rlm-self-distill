@@ -18,7 +18,6 @@ import json
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any
 
 from tqdm import tqdm
 
@@ -138,12 +137,12 @@ def run(text: str) -> str:
 '''
     (tools_dir / "utilities" / "pii_masker.py").write_text(pii_masker)
 
-    print(f"Seeded tools directory with:")
-    print(f"  - pre_completion/pii_detector.py (check -> bool)")
-    print(f"  - pre_completion/grammar_checker.py (check -> bool)")
-    print(f"  - replacements/pii_detector.py (run -> dict)")
-    print(f"  - replacements/grammar_checker.py (run -> dict)")
-    print(f"  - utilities/pii_masker.py (run -> str)")
+    print("Seeded tools directory with:")
+    print("  - pre_completion/pii_detector.py (check -> bool)")
+    print("  - pre_completion/grammar_checker.py (check -> bool)")
+    print("  - replacements/pii_detector.py (run -> dict)")
+    print("  - replacements/grammar_checker.py (run -> dict)")
+    print("  - utilities/pii_masker.py (run -> str)")
 
 
 @dataclass
@@ -705,7 +704,7 @@ def main():
             )
 
         pii_ds = load_dataset(DATA.PII_DETECTION, Split.TRAIN)
-        pii_start = len(tasks)
+        len(tasks)
         for item in tqdm(pii_ds, desc="  PII", unit="item"):
             tasks.append(
                 {
@@ -716,7 +715,7 @@ def main():
             )
 
         sciq_ds = load_dataset(DATA.SCIQ, Split.TRAIN)
-        sciq_start = len(tasks)
+        len(tasks)
         for item in tqdm(sciq_ds, desc="  SciQ", unit="item"):
             tasks.append(
                 {
@@ -877,7 +876,7 @@ def main():
     print(f"  - Replacements: {metrics['replacements']}")
     print(f"  - Utilities: {metrics['utilities']}")
     print()
-    print(f"Hook System Performance:")
+    print("Hook System Performance:")
     print(f"  - Hook executions: {metrics['hook_executions']}")
     print(f"  - LLM calls made: {metrics['llm_calls_made']}")
     print(f"  - LLM calls SKIPPED (replaced by tools): {metrics['llm_calls_skipped']}")
