@@ -6,9 +6,11 @@ Last updated: 2026-01-15
 
 This log documents experimental findings from the RLM (Recursive Language Models) self-distillation research project. The goal is to explore whether models can create reusable tools/skills through iterative refinement to improve performance on tasks.
 
-## Key Finding
+## Key Findings
 
-**Model capability is the primary bottleneck.** Simple prompts do not yield good results with smaller/open-source models. Only Claude Opus 4.5 produced reasonable results where rule-based approaches worked effectively.
+1. **Hand-built rules work and save tokens.** Experiments 003 and 004 showed 34-43% token savings using pre-built Python rules (not LLM-generated). The rules ran as pre-completion hooks, avoiding PII cases and handling grammar checks before the LLM was called.
+
+2. **LLM-generated rules don't work with smaller models.** When asking models (llama, qwen, deepseek) to CREATE the rules, they fail to produce usable code. Only Claude Opus 4.5 showed promise for rule generation.
 
 ---
 
@@ -24,13 +26,22 @@ This log documents experimental findings from the RLM (Recursive Language Models
 - **Goal**: Test if more compute helps
 - **Result**: Inconclusive - model limitations more significant than scale
 
-### Exp003: Executable Tools
-- **Goal**: Generate actual executable Python code
-- **Result**: Code generation quality too poor for reliable execution
+### Exp003: Executable Tools ✅ SUCCESS
+- **Goal**: Use hand-built executable Python tools as pre-completion hooks
+- **Approach**: Pre-built rules (NOT LLM-generated) saved to disk, executed via `importlib`
+- **Result**: **-34% token savings** vs baseline
+- **Tools**: task_classifier, basic_grammar, email/phone/ssn/ip detectors
+- **Key insight**: Tools executed locally with zero prompt overhead; LLM only called when tools fail
 
-### Exp004: Safety Macro Pipeline
-- **Goal**: Create safety-focused tools
-- **Result**: Limited success
+### Exp004: Safety Macro Pipeline ✅ SUCCESS
+- **Goal**: Safety-first pipeline where LLM never sees raw PII
+- **Approach**: Pre-built Safety Macro runs FIRST, masks PII before any LLM call
+- **Result**: **-43% token savings** + 100% PII protection (0 raw exposures vs 30 in baseline)
+- **Architecture**:
+  1. Safety Macro detects/masks PII → `[EMAIL_MASKED]`, `[SSN_MASKED]`
+  2. Completion rules check if tools can handle the task
+  3. LLM fallback only receives sanitized text
+- **Key insight**: Hand-built rules work; the question is whether LLMs can CREATE such rules
 
 ### Exp005: RLM Tool Creation (Multiple Runs)
 - **Runs**: 20+ iterations with various parameters
@@ -100,13 +111,24 @@ def solve(text):
 
 ## Technical Observations
 
-### Token Efficiency
+### Token Efficiency - What Works vs What Doesn't
+
+**Hand-built rules (SUCCESS):**
+| Approach | Tokens | vs Baseline |
+|----------|--------|-------------|
+| Baseline LLM | 6,435 | - |
+| Executable Tools (exp003) | 4,229 | **-34% savings** |
+| Safety Macro Pipeline (exp004) | 3,668* | **-43% savings** |
+
+*Effective tokens after PII masking reduces payload size
+
+**LLM-generated rules (FAILURE):**
 | Experiment | Baseline Tokens | RLM Tokens | Ratio |
 |------------|-----------------|------------|-------|
-| Exp007 | 12,607 | 330,877 | 26x |
-| Exp008 | 83,440 | 1,482,190 | 17.8x |
+| Exp007 | 12,607 | 330,877 | 26x more |
+| Exp008 | 83,440 | 1,482,190 | 17.8x more |
 
-The RLM approach uses 17-26x more tokens than baseline with no accuracy improvement.
+When LLMs try to CREATE rules, they use 17-26x more tokens with no accuracy improvement.
 
 ### Clustering (Evidence Module)
 The embedding-based clustering successfully identifies similar tasks:
@@ -125,9 +147,11 @@ The embedding-based clustering successfully identifies similar tasks:
 
 ## What Works
 
-1. **Opus 4.5**: Rules work reasonably well with sufficient model capability
-2. **Embedding clustering**: Successfully detects similar tasks
-3. **Architecture**: The pipeline structure is sound
+1. **Hand-built pre-completion rules**: 34-43% token savings (exp003, exp004)
+2. **Safety Macro pattern**: PII masking before LLM call = 100% protection
+3. **Embedding clustering**: Successfully detects similar tasks
+4. **Architecture**: The pipeline structure is sound
+5. **Opus 4.5 for rule generation**: Shows promise (needs more testing)
 
 ## What Doesn't Work (Yet)
 
