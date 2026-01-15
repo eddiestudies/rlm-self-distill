@@ -4,7 +4,7 @@ Last updated: 2026-01-15
 
 ## Overview
 
-This log documents experimental findings from the RLM (Reinforcement Learning from Models) self-distillation research project. The goal is to explore whether models can create reusable tools/skills through iterative refinement to improve performance on tasks.
+This log documents experimental findings from the RLM (Recursive Language Models) self-distillation research project. The goal is to explore whether models can create reusable tools/skills through iterative refinement to improve performance on tasks.
 
 ## Key Finding
 
