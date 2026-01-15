@@ -5,6 +5,11 @@ from self_distill.datasets.cola import CoLADataset, CoLAItem
 from self_distill.datasets.gsm8k import GSM8KDataset
 from self_distill.datasets.pii import PIIDetectionDataset, PIIMaskingDataset
 from self_distill.datasets.sciq import SciQDataset, SciQItem, SciQPhysicsDataset
+from self_distill.datasets.ai4privacy import (
+    AI4PrivacyDataset,
+    AI4PrivacyItem,
+    load_ai4privacy,
+)
 
 
 class DATA(Enum):
@@ -16,6 +21,7 @@ class DATA(Enum):
     PII_MASKING = "pii_masking"
     SCIQ = "sciq"
     SCIQ_PHYSICS = "sciq_physics"
+    AI4PRIVACY = "ai4privacy"  # 200K PII samples from HuggingFace
 
 
 def load_dataset(
@@ -57,6 +63,8 @@ def load_dataset(
         return SciQDataset(split=split, **kwargs)
     elif dataset == DATA.SCIQ_PHYSICS:
         return SciQPhysicsDataset(split=split, **kwargs)
+    elif dataset == DATA.AI4PRIVACY:
+        return AI4PrivacyDataset(**kwargs)
     else:
         raise ValueError(f"Unknown dataset: {dataset}")
 
@@ -74,5 +82,8 @@ __all__ = [
     "SciQDataset",
     "SciQItem",
     "SciQPhysicsDataset",
+    "AI4PrivacyDataset",
+    "AI4PrivacyItem",
+    "load_ai4privacy",
     "load_dataset",
 ]
