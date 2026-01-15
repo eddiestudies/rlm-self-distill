@@ -54,7 +54,9 @@ class VectorStore:
 
             if self.index_type == "flat":
                 # Exact L2 search - convert to cosine later
-                self._index = faiss.IndexFlatIP(self.dimension)  # Inner product for cosine
+                self._index = faiss.IndexFlatIP(
+                    self.dimension
+                )  # Inner product for cosine
             elif self.index_type == "ivf":
                 # IVF index for larger datasets
                 quantizer = faiss.IndexFlatIP(self.dimension)
@@ -169,12 +171,14 @@ class VectorStore:
             if threshold is not None and similarity < threshold:
                 continue
 
-            results.append(SearchResult(
-                id=self._ids[idx],
-                text=self._texts[idx],
-                score=similarity,
-                metadata=self._metadata[idx],
-            ))
+            results.append(
+                SearchResult(
+                    id=self._ids[idx],
+                    text=self._texts[idx],
+                    score=similarity,
+                    metadata=self._metadata[idx],
+                )
+            )
 
         return results
 

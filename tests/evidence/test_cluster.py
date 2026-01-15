@@ -17,7 +17,9 @@ def store(dimension):
     return VectorStore(dimension=dimension)
 
 
-def make_similar_vectors(base_vector: np.ndarray, n: int, noise: float = 0.1) -> list[np.ndarray]:
+def make_similar_vectors(
+    base_vector: np.ndarray, n: int, noise: float = 0.1
+) -> list[np.ndarray]:
     """Create vectors similar to base with small noise."""
     vectors = []
     for i in range(n):
@@ -124,12 +126,16 @@ class TestClusterDetector:
         base = np.random.randn(dimension).astype(np.float32)
         base = base / np.linalg.norm(base)
 
-        similar_vectors = make_similar_vectors(base, 5, noise=0.01)  # Lower noise for higher similarity
+        similar_vectors = make_similar_vectors(
+            base, 5, noise=0.01
+        )  # Lower noise for higher similarity
 
         for i, vec in enumerate(similar_vectors):
             store.add(f"id{i}", f"similar text {i}", vec)
 
-        detector = ClusterDetector(store, similarity_threshold=0.7, min_cluster_size=3)  # Lower threshold
+        detector = ClusterDetector(
+            store, similarity_threshold=0.7, min_cluster_size=3
+        )  # Lower threshold
 
         # Query with the base vector
         cluster = detector.find_cluster(base, "query similar text")
@@ -146,7 +152,9 @@ class TestClusterDetector:
         for i, vec in enumerate(similar_vectors):
             store.add(f"id{i}", f"text {i}", vec)
 
-        detector = ClusterDetector(store, similarity_threshold=0.7, min_cluster_size=3)  # Lower threshold
+        detector = ClusterDetector(
+            store, similarity_threshold=0.7, min_cluster_size=3
+        )  # Lower threshold
         should_create, cluster = detector.should_create_tool(base, "query")
 
         assert should_create is True

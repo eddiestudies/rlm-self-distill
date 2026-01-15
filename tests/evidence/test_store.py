@@ -3,7 +3,6 @@
 import sys
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 from types import ModuleType
 
 import numpy as np
@@ -20,7 +19,9 @@ class MockSentenceTransformer:
     def get_sentence_embedding_dimension(self):
         return self.dimension
 
-    def encode(self, texts, convert_to_numpy=True, batch_size=32, show_progress_bar=False):
+    def encode(
+        self, texts, convert_to_numpy=True, batch_size=32, show_progress_bar=False
+    ):
         if isinstance(texts, str):
             np.random.seed(hash(texts) % 2**32)
             return np.random.randn(self.dimension).astype(np.float32)
@@ -38,7 +39,7 @@ if "sentence_transformers" not in sys.modules:
     mock_st_module.SentenceTransformer = MockSentenceTransformer
     sys.modules["sentence_transformers"] = mock_st_module
 
-from self_distill.evidence.store import EvidenceStore
+from self_distill.evidence.store import EvidenceStore  # noqa: E402
 
 
 @pytest.fixture
@@ -124,7 +125,9 @@ class TestEvidenceStorePatternDetection:
         from self_distill.evidence.cluster import Cluster
         from self_distill.evidence.vector_store import SearchResult
 
-        members = [SearchResult(id=f"id{i}", text=f"text {i}", score=0.9) for i in range(5)]
+        members = [
+            SearchResult(id=f"id{i}", text=f"text {i}", score=0.9) for i in range(5)
+        ]
         cluster = Cluster(query_text="query", members=members, centroid_score=0.9)
 
         store.mark_pattern_triggered(cluster)
@@ -153,6 +156,7 @@ class TestEvidenceStorePersistence:
             # Mark a pattern as triggered
             from self_distill.evidence.cluster import Cluster
             from self_distill.evidence.vector_store import SearchResult
+
             members = [SearchResult(id="id1", text="t", score=0.9)]
             cluster = Cluster(query_text="q", members=members, centroid_score=0.9)
             store.mark_pattern_triggered(cluster)

@@ -3,14 +3,12 @@
 import tempfile
 from pathlib import Path
 
-import pytest
 
 from self_distill.skills.base import (
     CodeSkill,
     AlwaysTrigger,
     KeywordTrigger,
     PatternTrigger,
-    SkillResult,
 )
 from self_distill.skills.registry import SkillRegistry, RegisteredSkill
 
@@ -303,7 +301,7 @@ class TestSkillRegistryIntegration:
         registry = SkillRegistry(confidence_threshold=0.3)
 
         # Grammar skill that checks for common errors
-        grammar_code = '''
+        grammar_code = """
 def solve(text):
     errors = []
     # Check for double spaces
@@ -313,7 +311,7 @@ def solve(text):
     if text and text[0].islower():
         errors.append("lowercase start")
     return {"has_errors": len(errors) > 0, "errors": errors}
-'''
+"""
         grammar_skill = CodeSkill("grammar", grammar_code, "Checks grammar")
         grammar_trigger = KeywordTrigger(
             "grammar_kw",
@@ -337,7 +335,7 @@ def solve(text):
         """Test a PII detection scenario."""
         registry = SkillRegistry()
 
-        pii_code = '''
+        pii_code = """
 import re
 
 def solve(text):
@@ -351,7 +349,7 @@ def solve(text):
     for match in re.finditer(email_pattern, text):
         pii_found.append({"type": "EMAIL", "value": match.group(), "start": match.start()})
     return pii_found
-'''
+"""
         pii_skill = CodeSkill("pii", pii_code, "Detects PII")
         pii_trigger = PatternTrigger(
             "pii_patterns",

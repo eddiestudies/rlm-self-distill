@@ -85,7 +85,9 @@ class Cluster:
             Formatted string describing the cluster.
         """
         samples = self.sample(n=n_samples)
-        examples = "\n".join(f"  - {s[:100]}{'...' if len(s) > 100 else ''}" for s in samples)
+        examples = "\n".join(
+            f"  - {s[:100]}{'...' if len(s) > 100 else ''}" for s in samples
+        )
 
         return f"""Pattern detected: {self.size} similar tasks found (avg similarity: {self.centroid_score:.2f})
 

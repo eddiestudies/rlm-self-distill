@@ -52,7 +52,7 @@ def extract_docstring(file_path: Path) -> tuple[str, str, str]:
         return "", "", ""
 
     docstring = match.group(1).strip()
-    lines = docstring.split('\n')
+    lines = docstring.split("\n")
 
     # First line is usually the title
     title = lines[0].strip() if lines else ""
@@ -63,15 +63,15 @@ def extract_docstring(file_path: Path) -> tuple[str, str, str]:
     in_architecture = False
 
     for line in lines[1:]:
-        if 'Architecture:' in line or 'Key ' in line:
+        if "Architecture:" in line or "Key " in line:
             in_architecture = True
         if in_architecture:
             arch_lines.append(line)
         else:
             desc_lines.append(line)
 
-    description = '\n'.join(desc_lines).strip()
-    architecture = '\n'.join(arch_lines).strip()
+    description = "\n".join(desc_lines).strip()
+    architecture = "\n".join(arch_lines).strip()
 
     return title, description, architecture
 
@@ -81,15 +81,15 @@ def get_dataset_info(file_path: Path) -> str:
     content = file_path.read_text()
 
     datasets = []
-    if 'CoLA' in content or 'cola' in content.lower():
+    if "CoLA" in content or "cola" in content.lower():
         datasets.append("CoLA (Grammar)")
-    if 'PII' in content or 'pii' in content.lower():
+    if "PII" in content or "pii" in content.lower():
         datasets.append("PII Detection")
-    if 'GSM8K' in content or 'gsm8k' in content.lower():
+    if "GSM8K" in content or "gsm8k" in content.lower():
         datasets.append("GSM8K (Math)")
-    if 'AI4Privacy' in content or 'ai4privacy' in content.lower():
+    if "AI4Privacy" in content or "ai4privacy" in content.lower():
         datasets.append("AI4Privacy (200K PII)")
-    if 'SciQ' in content or 'sciq' in content.lower():
+    if "SciQ" in content or "sciq" in content.lower():
         datasets.append("SciQ (Science QA)")
 
     return ", ".join(datasets) if datasets else "Unknown"
@@ -107,15 +107,15 @@ def collect_tools(output_dir: Path) -> list[ToolInfo]:
 
     for pattern in tool_patterns:
         for tool_path in output_dir.glob(str(pattern.relative_to(output_dir))):
-            if tool_path.name.startswith('_'):
+            if tool_path.name.startswith("_"):
                 continue
 
             # Determine category from path
             rel_path = tool_path.relative_to(output_dir)
             parts = rel_path.parts
 
-            if 'tools' in parts:
-                idx = parts.index('tools')
+            if "tools" in parts:
+                idx = parts.index("tools")
                 if len(parts) > idx + 2:
                     category = parts[idx + 1]
                 else:
@@ -125,12 +125,14 @@ def collect_tools(output_dir: Path) -> list[ToolInfo]:
 
             try:
                 code = tool_path.read_text()
-                tools.append(ToolInfo(
-                    name=tool_path.stem,
-                    category=category,
-                    code=code,
-                    path=str(rel_path),
-                ))
+                tools.append(
+                    ToolInfo(
+                        name=tool_path.stem,
+                        category=category,
+                        code=code,
+                        path=str(rel_path),
+                    )
+                )
             except Exception:
                 pass
 
@@ -149,11 +151,15 @@ def collect_sample_data(output_dir: Path) -> list[dict]:
             texts = data.get("texts", [])[:5]  # First 5 samples
             metadata = data.get("metadata", [])[:5]
             for i, (text, meta) in enumerate(zip(texts, metadata)):
-                samples.append({
-                    "id": data.get("ids", [f"sample_{i}"])[i] if i < len(data.get("ids", [])) else f"sample_{i}",
-                    "text": text[:200] + "..." if len(text) > 200 else text,
-                    "type": meta.get("type", "unknown"),
-                })
+                samples.append(
+                    {
+                        "id": data.get("ids", [f"sample_{i}"])[i]
+                        if i < len(data.get("ids", []))
+                        else f"sample_{i}",
+                        "text": text[:200] + "..." if len(text) > 200 else text,
+                        "type": meta.get("type", "unknown"),
+                    }
+                )
         except Exception:
             pass
 
@@ -179,7 +185,7 @@ def process_experiment_outputs(base_dir: Path) -> dict[str, list[ExperimentRun]]
             continue
 
         # Parse experiment ID and timestamp from directory name
-        match = re.match(r'(exp\d+)_(\d{8}_\d{6})', output_dir.name)
+        match = re.match(r"(exp\d+)_(\d{8}_\d{6})", output_dir.name)
         if not match:
             continue
 
@@ -237,7 +243,7 @@ def main():
     experiments = []
 
     for exp_file in sorted(experiments_dir.glob("exp*.py")):
-        exp_id = exp_file.stem.split('_')[0]  # exp001, exp002, etc.
+        exp_id = exp_file.stem.split("_")[0]  # exp001, exp002, etc.
 
         title, description, architecture = extract_docstring(exp_file)
         dataset_info = get_dataset_info(exp_file)

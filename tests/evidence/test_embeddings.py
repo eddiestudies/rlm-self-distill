@@ -3,7 +3,6 @@
 import sys
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 from types import ModuleType
 
 import numpy as np
@@ -20,7 +19,9 @@ class MockSentenceTransformer:
     def get_sentence_embedding_dimension(self):
         return self.dimension
 
-    def encode(self, texts, convert_to_numpy=True, batch_size=32, show_progress_bar=False):
+    def encode(
+        self, texts, convert_to_numpy=True, batch_size=32, show_progress_bar=False
+    ):
         if isinstance(texts, str):
             # Single text - return 1D array
             np.random.seed(hash(texts) % 2**32)
@@ -39,7 +40,7 @@ mock_st_module = ModuleType("sentence_transformers")
 mock_st_module.SentenceTransformer = MockSentenceTransformer
 sys.modules["sentence_transformers"] = mock_st_module
 
-from self_distill.evidence.embeddings import EmbeddingModel
+from self_distill.evidence.embeddings import EmbeddingModel  # noqa: E402
 
 
 @pytest.fixture

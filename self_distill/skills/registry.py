@@ -13,6 +13,7 @@ from self_distill.skills.base import Skill, Trigger, CodeSkill, SkillResult
 @dataclass
 class RegisteredSkill:
     """A skill with its trigger."""
+
     skill: Skill
     trigger: Trigger
     priority: int = 0  # Higher priority skills are checked first

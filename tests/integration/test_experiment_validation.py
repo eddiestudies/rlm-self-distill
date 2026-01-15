@@ -47,11 +47,15 @@ class TestExperimentOutputStructure:
 
         # Validate metadata
         for field in expected_schema["metadata"]["required_fields"]:
-            assert field in valid_results["metadata"], f"Missing required field: {field}"
+            assert field in valid_results["metadata"], (
+                f"Missing required field: {field}"
+            )
 
         # Validate test_results
         for field in expected_schema["test_results"]["required_fields"]:
-            assert field in valid_results["test_results"], f"Missing required field: {field}"
+            assert field in valid_results["test_results"], (
+                f"Missing required field: {field}"
+            )
 
     def test_skills_json_schema(self):
         """Verify skills.json has required fields."""
@@ -111,7 +115,9 @@ class TestExperimentResultsValidation:
         assert results["fn"] >= 0
 
         # Sum should equal total
-        total_from_matrix = results["tp"] + results["tn"] + results["fp"] + results["fn"]
+        total_from_matrix = (
+            results["tp"] + results["tn"] + results["fp"] + results["fn"]
+        )
         assert total_from_matrix == results["total"]
 
     def test_iteration_history_structure(self):
@@ -139,10 +145,10 @@ class TestSkillCodeValidation:
         """Valid skill code should compile and run."""
         from self_distill.skills.base import CodeSkill
 
-        valid_code = '''
+        valid_code = """
 def solve(text):
     return len(text)
-'''
+"""
         skill = CodeSkill("test", valid_code)
         assert skill.is_valid
         result = skill.run("hello")
@@ -153,10 +159,10 @@ def solve(text):
         """Skill code must define a solve function."""
         from self_distill.skills.base import CodeSkill
 
-        invalid_code = '''
+        invalid_code = """
 def process(text):
     return text
-'''
+"""
         skill = CodeSkill("test", invalid_code)
         assert not skill.is_valid
         assert "solve" in skill._compile_error
@@ -165,10 +171,10 @@ def process(text):
         """Skills should gracefully handle runtime errors."""
         from self_distill.skills.base import CodeSkill
 
-        error_code = '''
+        error_code = """
 def solve(text):
     raise ValueError("test error")
-'''
+"""
         skill = CodeSkill("test", error_code)
         assert skill.is_valid  # Compiles OK
 
@@ -209,10 +215,10 @@ class TestExperimentOutputFiles:
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir)
 
-            skill_code = '''
+            skill_code = """
 def solve(text):
     return text.upper()
-'''
+"""
             skill = CodeSkill("upper_case", skill_code, "Converts to uppercase")
 
             # Save skill code

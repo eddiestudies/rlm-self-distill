@@ -29,6 +29,7 @@ from self_distill.datasets import load_ai4privacy
 @dataclass
 class TestResult:
     """Result of testing a tool on a single sample."""
+
     sample_id: str
     text: str
     expected_types: set[str]
@@ -54,6 +55,7 @@ class TestResult:
 @dataclass
 class IterationMetrics:
     """Metrics for one iteration."""
+
     iteration: int
     tool_code: str
     true_positives: int = 0
@@ -96,10 +98,10 @@ class IterationMetrics:
 
 def extract_code_block(text: str) -> str | None:
     """Extract Python code from markdown."""
-    match = re.search(r'```python\n(.*?)```', text, re.DOTALL)
+    match = re.search(r"```python\n(.*?)```", text, re.DOTALL)
     if match:
         return match.group(1).strip()
-    match = re.search(r'```\n(.*?)```', text, re.DOTALL)
+    match = re.search(r"```\n(.*?)```", text, re.DOTALL)
     if match:
         return match.group(1).strip()
     return None
@@ -111,10 +113,10 @@ def run_tool(code: str, text: str) -> tuple[list[dict], str | None]:
         namespace = {"__builtins__": __builtins__}
         exec(code, namespace)
 
-        if 'detect' not in namespace:
+        if "detect" not in namespace:
             return [], "No 'detect' function found"
 
-        result = namespace['detect'](text)
+        result = namespace["detect"](text)
         if not isinstance(result, list):
             return [], f"Expected list, got {type(result)}"
 
@@ -123,24 +125,26 @@ def run_tool(code: str, text: str) -> tuple[list[dict], str | None]:
         return [], f"{type(e).__name__}: {str(e)}"
 
 
-def test_tool(code: str, samples: list[dict]) -> tuple[IterationMetrics, list[TestResult]]:
+def test_tool(
+    code: str, samples: list[dict]
+) -> tuple[IterationMetrics, list[TestResult]]:
     """Test a tool against all samples - evaluates by PII TYPE matching."""
     metrics = IterationMetrics(iteration=0, tool_code=code)
     results = []
 
     for sample in samples:
-        detected, error = run_tool(code, sample['text'])
+        detected, error = run_tool(code, sample["text"])
 
         if error and not metrics.error:
             metrics.error = error
 
         # Extract detected types
-        detected_types = {d.get('type', 'UNKNOWN') for d in detected}
-        expected_types = set(sample['entities'])
+        detected_types = {d.get("type", "UNKNOWN") for d in detected}
+        expected_types = set(sample["entities"])
 
         result = TestResult(
-            sample_id=sample['id'],
-            text=sample['text'],
+            sample_id=sample["id"],
+            text=sample["text"],
             expected_types=expected_types,
             detected_types=detected_types,
             detected=detected,
@@ -155,7 +159,9 @@ def test_tool(code: str, samples: list[dict]) -> tuple[IterationMetrics, list[Te
     return metrics, results
 
 
-def format_feedback(metrics: IterationMetrics, results: list[TestResult], max_examples: int = 3) -> str:
+def format_feedback(
+    metrics: IterationMetrics, results: list[TestResult], max_examples: int = 3
+) -> str:
     """Format test results as feedback for the model."""
 
     # Aggregate type-level errors across all samples
@@ -204,7 +210,9 @@ def format_feedback(metrics: IterationMetrics, results: list[TestResult], max_ex
 
     if all_fn_types:
         sorted_fns = sorted(all_fn_types.items(), key=lambda x: -x[1])[:5]
-        feedback += "\n**Most common MISSED types (not detecting these when present):**\n"
+        feedback += (
+            "\n**Most common MISSED types (not detecting these when present):**\n"
+        )
         for t, count in sorted_fns:
             feedback += f"  - {t}: {count} times\n"
 
@@ -212,13 +220,13 @@ def format_feedback(metrics: IterationMetrics, results: list[TestResult], max_ex
     if fp_examples:
         feedback += "\n**False Positive Examples (wrong type detected):**\n"
         for text, detected, fp_types in fp_examples:
-            feedback += f"- Text: \"{text[:80]}...\"\n"
+            feedback += f'- Text: "{text[:80]}..."\n'
             feedback += f"  Wrongly detected: {fp_types}\n"
 
     if fn_examples:
         feedback += "\n**False Negative Examples (type missed):**\n"
         for text, expected, fn_types in fn_examples:
-            feedback += f"- Text: \"{text[:80]}...\"\n"
+            feedback += f'- Text: "{text[:80]}..."\n'
             feedback += f"  Missed types: {fn_types} (expected: {expected})\n"
 
     return feedback
@@ -228,10 +236,12 @@ def create_initial_tool(client: OllamaClient, model: str, samples: list[dict]) -
     """Create initial tool from examples."""
     # Show a few examples
     examples = samples[:5]
-    examples_text = "\n".join([
-        f"- Text: \"{s['text'][:150]}...\"\n  PII types: {s['entities']}"
-        for s in examples
-    ])
+    examples_text = "\n".join(
+        [
+            f'- Text: "{s["text"][:150]}..."\n  PII types: {s["entities"]}'
+            for s in examples
+        ]
+    )
 
     prompt = f"""Create a Python function to detect PII (Personal Identifiable Information) in text.
 
@@ -258,7 +268,9 @@ def detect(text: str) -> list[dict]:
     return code or ""
 
 
-def refine_tool(client: OllamaClient, model: str, current_code: str, feedback: str, iteration: int) -> str:
+def refine_tool(
+    client: OllamaClient, model: str, current_code: str, feedback: str, iteration: int
+) -> str:
     """Ask model to refine the tool based on feedback."""
     prompt = f"""You are iteratively improving a PII detection tool. Here is the current code:
 
@@ -295,7 +307,9 @@ def main():
 
     parser = argparse.ArgumentParser(description="Exp010: Iterative Tool Refinement")
     parser.add_argument("--model", default="qwen2.5-coder:32b", help="Model to use")
-    parser.add_argument("--iterations", type=int, default=100, help="Number of iterations")
+    parser.add_argument(
+        "--iterations", type=int, default=100, help="Number of iterations"
+    )
     parser.add_argument("--dataset-size", type=int, default=100, help="Dataset size")
     parser.add_argument("--verbose", action="store_true", help="Verbose output")
     args = parser.parse_args()
@@ -369,15 +383,19 @@ def main():
             best_code = current_code
 
         # Update progress bar
-        pbar.set_postfix({
-            "P": f"{metrics.precision:.1%}",
-            "R": f"{metrics.recall:.1%}",
-            "F1": f"{metrics.f1:.3f}",
-            "best": f"{best_f1:.3f}@{best_iteration}",
-        })
+        pbar.set_postfix(
+            {
+                "P": f"{metrics.precision:.1%}",
+                "R": f"{metrics.recall:.1%}",
+                "F1": f"{metrics.f1:.3f}",
+                "best": f"{best_f1:.3f}@{best_iteration}",
+            }
+        )
 
         if args.verbose:
-            tqdm.write(f"\nIteration {i}: P={metrics.precision:.1%} R={metrics.recall:.1%} F1={metrics.f1:.3f}")
+            tqdm.write(
+                f"\nIteration {i}: P={metrics.precision:.1%} R={metrics.recall:.1%} F1={metrics.f1:.3f}"
+            )
             if metrics.error:
                 tqdm.write(f"  Error: {metrics.error}")
 

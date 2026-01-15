@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Experiment Results Explorer</title>
+    <style>
+        :root {
+            --bg: #0d1117;
+            --bg-light: #161b22;
+            --bg-card: #21262d;
+            --text: #c9d1d9;
+            --text-dim: #8b949e;
+            --accent: #58a6ff;
+            --accent2: #f78166;
+            --success: #3fb950;
+            --error: #f85149;
+            --warning: #d29922;
+            --border: #30363d;
+            --code-bg: #0d1117;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.5;
+        }
+        .container { max-width: 1600px; margin: 0 auto; padding: 20px; }
+        h1, h2, h3 { margin-bottom: 16px; font-weight: 600; }
+        h1 { font-size: 24px; color: var(--text); display: flex; align-items: center; gap: 10px; }
+        h2 { font-size: 20px; color: var(--text); border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+        h3 { font-size: 16px; color: var(--text-dim); }
+
+        .upload-area {
+            background: var(--bg-light);
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            padding: 60px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+        .upload-area:hover { border-color: var(--accent); }
+        .upload-area input { display: none; }
+        .upload-area p { margin: 8px 0; }
+        .upload-area code { background: var(--bg-card); padding: 4px 8px; border-radius: 6px; font-size: 14px; }
+
+        .header-bar {
+            background: var(--bg-light);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 20px;
+            margin: -20px -20px 20px -20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .summary-card {
+            background: var(--bg-light);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+        }
+        .summary-card .value { font-size: 28px; font-weight: 600; color: var(--accent); }
+        .summary-card .label { font-size: 12px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
+        .summary-card.highlight { border-color: var(--success); }
+        .summary-card.highlight .value { color: var(--success); }
+        .summary-card.warning { border-color: var(--warning); }
+        .summary-card.warning .value { color: var(--warning); }
+
+        .tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0;
+        }
+        .tab {
+            padding: 12px 20px;
+            background: transparent;
+            border: none;
+            color: var(--text-dim);
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -1px;
+            transition: all 0.2s;
+        }
+        .tab:hover { color: var(--text); }
+        .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .filters {
+            background: var(--bg-light);
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            align-items: center;
+            border: 1px solid var(--border);
+        }
+        .filters label { color: var(--text-dim); font-size: 13px; }
+        .filters select, .filters input {
+            background: var(--bg);
+            color: var(--text);
+            border: 1px solid var(--border);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .filters select:focus, .filters input:focus { outline: none; border-color: var(--accent); }
+
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border); font-size: 14px; }
+        th { background: var(--bg-light); color: var(--text-dim); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+        tr:hover { background: var(--bg-light); }
+        tr { cursor: pointer; transition: background 0.1s; }
+
+        .badge {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            display: inline-block;
+        }
+        .badge.correct { background: rgba(63, 185, 80, 0.2); color: var(--success); }
+        .badge.incorrect { background: rgba(248, 81, 73, 0.2); color: var(--error); }
+        .badge.unknown { background: rgba(210, 153, 34, 0.2); color: var(--warning); }
+        .badge.rule { background: rgba(88, 166, 255, 0.2); color: var(--accent); }
+        .badge.llm { background: rgba(247, 129, 102, 0.2); color: var(--accent2); }
+
+        .detail-panel {
+            position: fixed;
+            top: 0;
+            right: -600px;
+            width: 600px;
+            height: 100vh;
+            background: var(--bg-light);
+            border-left: 1px solid var(--border);
+            overflow-y: auto;
+            transition: right 0.3s ease;
+            z-index: 1000;
+            box-shadow: -4px 0 20px rgba(0,0,0,0.3);
+        }
+        .detail-panel.visible { right: 0; }
+        .detail-header {
+            position: sticky;
+            top: 0;
+            background: var(--bg-light);
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1;
+        }
+        .detail-content { padding: 20px; }
+        .close-btn {
+            background: transparent;
+            color: var(--text-dim);
+            border: 1px solid var(--border);
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .close-btn:hover { background: var(--bg-card); color: var(--text); }
+
+        .message {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+        .message .role {
+            color: var(--accent);
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+        .message .content { white-space: pre-wrap; font-size: 14px; line-height: 1.6; }
+
+        .response-box {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--success);
+            padding: 16px;
+            border-radius: 0 8px 8px 0;
+            margin: 16px 0;
+        }
+        .response-box .label { color: var(--success); font-weight: 600; font-size: 12px; text-transform: uppercase; margin-bottom: 8px; }
+        .response-box .content { white-space: pre-wrap; font-size: 14px; }
+
+        .meta-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin: 16px 0;
+        }
+        .meta-item {
+            background: var(--bg);
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+        }
+        .meta-item .label { color: var(--text-dim); font-size: 11px; text-transform: uppercase; }
+        .meta-item .value { font-weight: 600; font-size: 16px; margin-top: 4px; }
+
+        /* Rules Section */
+        .rule-card {
+            background: var(--bg-light);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-bottom: 16px;
+            overflow: hidden;
+        }
+        .rule-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
+        .rule-header:hover { background: var(--bg-card); }
+        .rule-header h3 { margin: 0; font-size: 16px; color: var(--text); }
+        .rule-stats {
+            display: flex;
+            gap: 16px;
+            font-size: 13px;
+        }
+        .rule-stats span { color: var(--text-dim); }
+        .rule-stats .value { color: var(--text); font-weight: 600; }
+        .rule-body { display: none; padding: 16px; background: var(--bg); }
+        .rule-body.visible { display: block; }
+
+        .code-block {
+            background: var(--code-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+            white-space: pre;
+            line-height: 1.5;
+            color: var(--text);
+        }
+        .code-block .keyword { color: #ff7b72; }
+        .code-block .string { color: #a5d6ff; }
+        .code-block .function { color: #d2a8ff; }
+        .code-block .comment { color: var(--text-dim); }
+
+        /* Token Flow Chart */
+        .token-flow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            padding: 30px;
+            background: var(--bg-light);
+            border-radius: 8px;
+            margin: 20px 0;
+            border: 1px solid var(--border);
+        }
+        .token-box {
+            text-align: center;
+            padding: 20px;
+            border-radius: 8px;
+            min-width: 140px;
+        }
+        .token-box.creation { background: rgba(248, 81, 73, 0.1); border: 1px solid var(--error); }
+        .token-box.saved { background: rgba(63, 185, 80, 0.1); border: 1px solid var(--success); }
+        .token-box.net { background: rgba(88, 166, 255, 0.1); border: 1px solid var(--accent); }
+        .token-box .number { font-size: 32px; font-weight: 700; }
+        .token-box .label { font-size: 12px; color: var(--text-dim); text-transform: uppercase; margin-top: 4px; }
+        .token-box.creation .number { color: var(--error); }
+        .token-box.saved .number { color: var(--success); }
+        .token-box.net .number { color: var(--accent); }
+        .token-arrow { font-size: 24px; color: var(--text-dim); }
+
+        /* Charts */
+        .chart-container { margin: 20px 0; }
+        .bar-chart { display: flex; flex-direction: column; gap: 12px; }
+        .bar-row { display: flex; align-items: center; gap: 12px; }
+        .bar-label { width: 180px; text-align: right; font-size: 13px; color: var(--text-dim); }
+        .bar-container { flex: 1; background: var(--bg); border-radius: 4px; height: 28px; border: 1px solid var(--border); overflow: hidden; }
+        .bar-fill { height: 100%; display: flex; align-items: center; padding: 0 10px; font-size: 12px; font-weight: 600; }
+        .bar-fill.correct { background: var(--success); color: #000; }
+        .bar-fill.tokens { background: var(--accent); color: #000; }
+
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 16px;
+        }
+        .model-card {
+            background: var(--bg-light);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .model-card-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .model-card-header h4 { margin: 0; font-size: 14px; }
+        .model-card-body { padding: 16px; }
+
+        .hidden { display: none !important; }
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 999; display: none; }
+        .overlay.visible { display: block; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="upload-area" id="uploadArea">
+            <h2>📊 Experiment Results Explorer</h2>
+            <p>Drop a results JSON file here or click to select</p>
+            <p><code>python run_experiments.py</code></p>
+            <input type="file" id="fileInput" accept=".json">
+        </div>
+
+        <div id="content" class="hidden">
+            <div class="header-bar">
+                <h1>📊 Experiment Results</h1>
+                <span id="batchInfo" style="color: var(--text-dim);"></span>
+            </div>
+
+            <div class="summary-grid" id="summaryGrid"></div>
+
+            <div class="tabs">
+                <button class="tab active" data-tab="overview">Overview</button>
+                <button class="tab" data-tab="rules">Rules</button>
+                <button class="tab" data-tab="results">All Results</button>
+                <button class="tab" data-tab="compare">Compare</button>
+            </div>
+
+            <!-- Overview Tab -->
+            <div class="tab-content active" id="tab-overview">
+                <h2>Token Economy</h2>
+                <div class="token-flow" id="tokenFlow"></div>
+
+                <h2>Accuracy by Execution Method</h2>
+                <div class="chart-container">
+                    <div class="bar-chart" id="modelChart"></div>
+                </div>
+
+                <h2>Accuracy by Category</h2>
+                <div class="chart-container">
+                    <div class="bar-chart" id="categoryChart"></div>
+                </div>
+            </div>
+
+            <!-- Rules Tab -->
+            <div class="tab-content" id="tab-rules">
+                <div id="ruleSummary"></div>
+                <h2>Generated Rules</h2>
+                <div id="rulesList"></div>
+            </div>
+
+            <!-- Results Tab -->
+            <div class="tab-content" id="tab-results">
+                <div class="filters">
+                    <label>Model:</label>
+                    <select id="filterModel"><option value="">All</option></select>
+                    <label>Category:</label>
+                    <select id="filterCategory"><option value="">All</option></select>
+                    <label>Type:</label>
+                    <select id="filterType">
+                        <option value="">All</option>
+                        <option value="rule">Rule-based</option>
+                        <option value="llm">LLM</option>
+                    </select>
+                    <label>Status:</label>
+                    <select id="filterStatus">
+                        <option value="">All</option>
+                        <option value="correct">Correct</option>
+                        <option value="incorrect">Incorrect</option>
+                    </select>
+                    <input type="text" id="filterSearch" placeholder="Search...">
+                </div>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Category</th>
+                            <th>Type</th>
+                            <th>Status</th>
+                            <th>Tokens</th>
+                            <th>Saved</th>
+                            <th>Time</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsBody"></tbody>
+                </table>
+            </div>
+
+            <!-- Compare Tab -->
+            <div class="tab-content" id="tab-compare">
+                <div class="filters">
+                    <label>Select Experiment:</label>
+                    <select id="compareSelect"></select>
+                </div>
+                <div class="comparison-grid" id="comparisonGrid"></div>
+            </div>
+        </div>
+
+        <div class="overlay" id="overlay" onclick="closeDetail()"></div>
+        <div class="detail-panel" id="detailPanel">
+            <div class="detail-header">
+                <h2 id="detailTitle">Details</h2>
+                <button class="close-btn" onclick="closeDetail()">✕ Close</button>
+            </div>
+            <div class="detail-content" id="detailContent"></div>
+        </div>
+    </div>
+
+    <script>
+        let data = null;
+
+        // File handling
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+
+        uploadArea.onclick = () => fileInput.click();
+        uploadArea.ondragover = (e) => { e.preventDefault(); uploadArea.style.borderColor = 'var(--accent)'; };
+        uploadArea.ondragleave = () => { uploadArea.style.borderColor = 'var(--border)'; };
+        uploadArea.ondrop = (e) => { e.preventDefault(); if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]); };
+        fileInput.onchange = (e) => { if (e.target.files[0]) loadFile(e.target.files[0]); };
+
+        function loadFile(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    data = JSON.parse(e.target.result);
+                    render();
+                    uploadArea.classList.add('hidden');
+                    document.getElementById('content').classList.remove('hidden');
+                } catch (err) {
+                    alert('Error: ' + err.message);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // Tabs
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.onclick = () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+            };
+        });
+
+        function render() {
+            document.getElementById('batchInfo').textContent = `${data.batch_id} • ${data.results.length} experiments`;
+            renderSummary();
+            renderTokenFlow();
+            renderCharts();
+            renderRules();
+            renderResults();
+            setupFilters();
+            setupCompare();
+        }
+
+        function renderSummary() {
+            const s = data.summary;
+            const rs = data.rule_summary || {};
+            const totalTokens = Object.values(s.by_model).reduce((a, b) => a + b.tokens, 0);
+            const totalSaved = rs.total_tokens_saved || 0;
+            const netSaved = rs.net_tokens_saved || 0;
+
+            document.getElementById('summaryGrid').innerHTML = `
+                <div class="summary-card">
+                    <div class="value">${s.total_experiments}</div>
+                    <div class="label">Experiments</div>
+                </div>
+                <div class="summary-card">
+                    <div class="value">${data.models?.length || 0}</div>
+                    <div class="label">Models</div>
+                </div>
+                <div class="summary-card">
+                    <div class="value">${rs.total_rules || 0}</div>
+                    <div class="label">Rules Created</div>
+                </div>
+                <div class="summary-card">
+                    <div class="value">${(totalTokens / 1000).toFixed(1)}k</div>
+                    <div class="label">Total Tokens</div>
+                </div>
+                <div class="summary-card ${netSaved > 0 ? 'highlight' : 'warning'}">
+                    <div class="value">${netSaved > 0 ? '+' : ''}${netSaved}</div>
+                    <div class="label">Net Tokens Saved</div>
+                </div>
+            `;
+        }
+
+        function renderTokenFlow() {
+            const rs = data.rule_summary || {};
+            document.getElementById('tokenFlow').innerHTML = `
+                <div class="token-box creation">
+                    <div class="number">${rs.total_creation_tokens || 0}</div>
+                    <div class="label">Rule Creation Cost</div>
+                </div>
+                <div class="token-arrow">→</div>
+                <div class="token-box saved">
+                    <div class="number">${rs.total_tokens_saved || 0}</div>
+                    <div class="label">Tokens Saved</div>
+                </div>
+                <div class="token-arrow">=</div>
+                <div class="token-box net">
+                    <div class="number">${rs.net_tokens_saved || 0}</div>
+                    <div class="label">Net Savings</div>
+                </div>
+            `;
+        }
+
+        function renderCharts() {
+            // Model chart
+            const modelChart = document.getElementById('modelChart');
+            modelChart.innerHTML = '';
+            for (const [model, stats] of Object.entries(data.summary.by_model)) {
+                const total = stats.correct + stats.incorrect;
+                const pct = total > 0 ? (stats.correct / total * 100) : 0;
+                modelChart.innerHTML += `
+                    <div class="bar-row">
+                        <div class="bar-label">${model}</div>
+                        <div class="bar-container">
+                            <div class="bar-fill correct" style="width: ${pct}%">${total > 0 ? pct.toFixed(0) + '%' : 'N/A'}</div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Category chart
+            const categoryChart = document.getElementById('categoryChart');
+            categoryChart.innerHTML = '';
+            for (const [cat, stats] of Object.entries(data.summary.by_category)) {
+                const total = stats.correct + stats.incorrect;
+                const pct = total > 0 ? (stats.correct / total * 100) : 0;
+                categoryChart.innerHTML += `
+                    <div class="bar-row">
+                        <div class="bar-label">${cat}</div>
+                        <div class="bar-container">
+                            <div class="bar-fill correct" style="width: ${pct}%">${total > 0 ? pct.toFixed(0) + '%' : 'N/A'}</div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        function renderRules() {
+            const rs = data.rule_summary || {};
+            const rules = data.rules || [];
+
+            document.getElementById('ruleSummary').innerHTML = `
+                <div class="summary-grid" style="margin-bottom: 24px;">
+                    <div class="summary-card">
+                        <div class="value">${rs.total_rules || 0}</div>
+                        <div class="label">Rules Created</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="value">${rs.total_rule_uses || 0}</div>
+                        <div class="label">Total Uses</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="value">${Math.round(rs.avg_tokens_saved_per_use || 0)}</div>
+                        <div class="label">Avg Tokens/Use</div>
+                    </div>
+                    <div class="summary-card ${(rs.net_tokens_saved || 0) > 0 ? 'highlight' : ''}">
+                        <div class="value">${rs.net_tokens_saved || 0}</div>
+                        <div class="label">Net Savings</div>
+                    </div>
+                </div>
+            `;
+
+            const rulesList = document.getElementById('rulesList');
+            rulesList.innerHTML = '';
+
+            rules.forEach((rule, idx) => {
+                const acc = (rule.correct_uses + rule.incorrect_uses) > 0
+                    ? (rule.correct_uses / (rule.correct_uses + rule.incorrect_uses) * 100).toFixed(0) + '%'
+                    : 'N/A';
+
+                rulesList.innerHTML += `
+                    <div class="rule-card">
+                        <div class="rule-header" onclick="toggleRule(${idx})">
+                            <div>
+                                <h3>${rule.name}</h3>
+                                <span style="color: var(--text-dim); font-size: 13px;">${rule.rule_id} • ${rule.category}</span>
+                            </div>
+                            <div class="rule-stats">
+                                <span>Uses: <span class="value">${rule.times_used}</span></span>
+                                <span>Saved: <span class="value" style="color: var(--success);">${rule.tokens_saved}</span></span>
+                                <span>Accuracy: <span class="value">${acc}</span></span>
+                            </div>
+                        </div>
+                        <div class="rule-body" id="rule-body-${idx}">
+                            <div class="meta-grid">
+                                <div class="meta-item">
+                                    <div class="label">Creation Cost</div>
+                                    <div class="value">${rule.creation_tokens} tokens</div>
+                                </div>
+                                <div class="meta-item">
+                                    <div class="label">Model Used</div>
+                                    <div class="value">${rule.creation_model}</div>
+                                </div>
+                                <div class="meta-item">
+                                    <div class="label">Correct Uses</div>
+                                    <div class="value" style="color: var(--success);">${rule.correct_uses}</div>
+                                </div>
+                                <div class="meta-item">
+                                    <div class="label">Incorrect Uses</div>
+                                    <div class="value" style="color: var(--error);">${rule.incorrect_uses}</div>
+                                </div>
+                            </div>
+                            <h3 style="margin-top: 16px;">Description</h3>
+                            <p style="color: var(--text-dim); margin-bottom: 16px;">${rule.description}</p>
+                            <h3>Generated Code</h3>
+                            <div class="code-block">${highlightPython(rule.code)}</div>
+                            <h3 style="margin-top: 16px;">Training Examples</h3>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                                ${rule.example_inputs.map((inp, i) => `
+                                    <div style="background: var(--bg-light); padding: 8px 12px; border-radius: 4px; font-size: 13px;">
+                                        <span style="color: var(--text-dim);">In:</span> ${escapeHtml(inp)}<br>
+                                        <span style="color: var(--text-dim);">Out:</span> ${escapeHtml(rule.example_outputs[i])}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function toggleRule(idx) {
+            document.getElementById('rule-body-' + idx).classList.toggle('visible');
+        }
+
+        function highlightPython(code) {
+            return escapeHtml(code)
+                .replace(/\b(def|return|if|else|elif|for|while|in|not|and|or|True|False|None|import|from|as|try|except|class)\b/g, '<span class="keyword">$1</span>')
+                .replace(/(["'])(.*?)\1/g, '<span class="string">$1$2$1</span>')
+                .replace(/#.*/g, '<span class="comment">$&</span>');
+        }
+
+        function renderResults(filter = {}) {
+            const tbody = document.getElementById('resultsBody');
+            tbody.innerHTML = '';
+
+            let results = data.results;
+            if (filter.model) results = results.filter(r => r.model === filter.model || (filter.model === 'rules' && r.used_rule));
+            if (filter.category) results = results.filter(r => r.category === filter.category);
+            if (filter.type === 'rule') results = results.filter(r => r.used_rule);
+            if (filter.type === 'llm') results = results.filter(r => !r.used_rule);
+            if (filter.status === 'correct') results = results.filter(r => r.is_correct === true);
+            if (filter.status === 'incorrect') results = results.filter(r => r.is_correct === false);
+            if (filter.search) {
+                const s = filter.search.toLowerCase();
+                results = results.filter(r => r.name.toLowerCase().includes(s) || r.actual_response.toLowerCase().includes(s));
+            }
+
+            for (const r of results) {
+                const status = r.is_correct === true ? 'correct' : r.is_correct === false ? 'incorrect' : 'unknown';
+                const typeClass = r.used_rule ? 'rule' : 'llm';
+                tbody.innerHTML += `
+                    <tr onclick="showDetail('${r.experiment_id}')">
+                        <td>${r.experiment_id}</td>
+                        <td>${r.name}</td>
+                        <td>${r.category}</td>
+                        <td><span class="badge ${typeClass}">${r.used_rule ? 'Rule' : 'LLM'}</span></td>
+                        <td><span class="badge ${status}">${r.is_correct === true ? '✓' : r.is_correct === false ? '✗' : '?'}</span></td>
+                        <td>${r.total_tokens}</td>
+                        <td style="color: ${r.tokens_saved > 0 ? 'var(--success)' : 'var(--text-dim)'};">${r.tokens_saved > 0 ? '+' + r.tokens_saved : '-'}</td>
+                        <td>${(r.total_duration_ms / 1000).toFixed(2)}s</td>
+                    </tr>
+                `;
+            }
+        }
+
+        function setupFilters() {
+            const modelSelect = document.getElementById('filterModel');
+            const categorySelect = document.getElementById('filterCategory');
+
+            const models = new Set();
+            data.results.forEach(r => { if (!r.used_rule) models.add(r.model); });
+            if (data.results.some(r => r.used_rule)) models.add('rules');
+            models.forEach(m => { modelSelect.innerHTML += `<option value="${m}">${m}</option>`; });
+
+            Object.keys(data.summary.by_category).forEach(c => {
+                categorySelect.innerHTML += `<option value="${c}">${c}</option>`;
+            });
+
+            const applyFilters = () => renderResults({
+                model: document.getElementById('filterModel').value,
+                category: document.getElementById('filterCategory').value,
+                type: document.getElementById('filterType').value,
+                status: document.getElementById('filterStatus').value,
+                search: document.getElementById('filterSearch').value
+            });
+
+            ['filterModel', 'filterCategory', 'filterType', 'filterStatus'].forEach(id => {
+                document.getElementById(id).onchange = applyFilters;
+            });
+            document.getElementById('filterSearch').oninput = applyFilters;
+        }
+
+        function setupCompare() {
+            const select = document.getElementById('compareSelect');
+            const names = [...new Set(data.results.map(r => r.name))];
+            names.forEach(n => { select.innerHTML += `<option value="${n}">${n}</option>`; });
+            select.onchange = () => renderComparison(select.value);
+            if (names.length > 0) renderComparison(names[0]);
+        }
+
+        function renderComparison(name) {
+            const grid = document.getElementById('comparisonGrid');
+            grid.innerHTML = '';
+            const results = data.results.filter(r => r.name === name);
+
+            for (const r of results) {
+                const status = r.is_correct === true ? 'correct' : r.is_correct === false ? 'incorrect' : 'unknown';
+                const typeClass = r.used_rule ? 'rule' : 'llm';
+                grid.innerHTML += `
+                    <div class="model-card">
+                        <div class="model-card-header">
+                            <h4>${r.model}</h4>
+                            <div>
+                                <span class="badge ${typeClass}">${r.used_rule ? 'Rule' : 'LLM'}</span>
+                                <span class="badge ${status}">${r.is_correct === true ? '✓' : r.is_correct === false ? '✗' : '?'}</span>
+                            </div>
+                        </div>
+                        <div class="model-card-body">
+                            <div class="meta-grid">
+                                <div class="meta-item">
+                                    <div class="label">Tokens</div>
+                                    <div class="value">${r.total_tokens}</div>
+                                </div>
+                                <div class="meta-item">
+                                    <div class="label">Saved</div>
+                                    <div class="value" style="color: ${r.tokens_saved > 0 ? 'var(--success)' : 'inherit'};">${r.tokens_saved > 0 ? '+' + r.tokens_saved : '-'}</div>
+                                </div>
+                            </div>
+                            <div class="response-box">
+                                <div class="content">${escapeHtml(r.actual_response.substring(0, 300))}${r.actual_response.length > 300 ? '...' : ''}</div>
+                            </div>
+                            ${r.expected ? `<p style="font-size: 13px; color: var(--text-dim);">Expected: <strong>${r.expected}</strong></p>` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        function showDetail(id) {
+            const r = data.results.find(x => x.experiment_id === id);
+            if (!r) return;
+
+            document.getElementById('detailTitle').textContent = r.name;
+
+            let messagesHtml = r.input_messages.map(msg => `
+                <div class="message">
+                    <div class="role">${msg.role}</div>
+                    <div class="content">${escapeHtml(msg.content)}</div>
+                </div>
+            `).join('');
+
+            const status = r.is_correct === true ? 'correct' : r.is_correct === false ? 'incorrect' : 'unknown';
+
+            document.getElementById('detailContent').innerHTML = `
+                <div class="meta-grid">
+                    <div class="meta-item">
+                        <div class="label">Model/Rule</div>
+                        <div class="value">${r.model}</div>
+                    </div>
+                    <div class="meta-item">
+                        <div class="label">Type</div>
+                        <div class="value"><span class="badge ${r.used_rule ? 'rule' : 'llm'}">${r.used_rule ? 'Rule' : 'LLM'}</span></div>
+                    </div>
+                    <div class="meta-item">
+                        <div class="label">Status</div>
+                        <div class="value"><span class="badge ${status}">${r.is_correct === true ? 'Correct' : r.is_correct === false ? 'Incorrect' : 'Unknown'}</span></div>
+                    </div>
+                    <div class="meta-item">
+                        <div class="label">Category</div>
+                        <div class="value">${r.category}</div>
+                    </div>
+                    <div class="meta-item">
+                        <div class="label">Tokens Used</div>
+                        <div class="value">${r.total_tokens}</div>
+                    </div>
+                    <div class="meta-item">
+                        <div class="label">Tokens Saved</div>
+                        <div class="value" style="color: ${r.tokens_saved > 0 ? 'var(--success)' : 'inherit'};">${r.tokens_saved > 0 ? '+' + r.tokens_saved : '-'}</div>
+                    </div>
+                    <div class="meta-item">
+                        <div class="label">Duration</div>
+                        <div class="value">${(r.total_duration_ms / 1000).toFixed(3)}s</div>
+                    </div>
+                    <div class="meta-item">
+                        <div class="label">Expected</div>
+                        <div class="value">${r.expected || 'N/A'}</div>
+                    </div>
+                </div>
+
+                <h3 style="margin-top: 20px;">Input</h3>
+                ${messagesHtml}
+
+                <h3>Response</h3>
+                <div class="response-box">
+                    <div class="content">${escapeHtml(r.actual_response)}</div>
+                </div>
+
+                ${r.used_rule && r.rule_id ? `
+                    <h3>Rule Used: ${r.rule_id}</h3>
+                    <p style="color: var(--text-dim);">This result was computed using a generated rule instead of calling the LLM.</p>
+                ` : ''}
+            `;
+
+            document.getElementById('detailPanel').classList.add('visible');
+            document.getElementById('overlay').classList.add('visible');
+        }
+
+        function closeDetail() {
+            document.getElementById('detailPanel').classList.remove('visible');
+            document.getElementById('overlay').classList.remove('visible');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Auto-load latest results
+        fetch('experiment_results/').then(r => r.text()).then(html => {
+            const matches = html.match(/run_\d+\.json/g);
+            if (matches?.length > 0) {
+                fetch('experiment_results/' + matches.sort().reverse()[0])
+                    .then(r => r.json())
+                    .then(json => {
+                        data = json;
+                        render();
+                        uploadArea.classList.add('hidden');
+                        document.getElementById('content').classList.remove('hidden');
+                    }).catch(() => {});
+            }
+        }).catch(() => {});
+    </script>
+</body>
+</html>

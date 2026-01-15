@@ -31,6 +31,7 @@ from self_distill.datasets import load_ai4privacy
 @dataclass
 class ToolResult:
     """Result of running a tool on a sample."""
+
     sample_id: str
     sample_text: str
     tool_output: str | dict | None
@@ -41,6 +42,7 @@ class ToolResult:
 @dataclass
 class CreatedTool:
     """A tool created by the LLM."""
+
     name: str
     description: str
     code: str
@@ -63,8 +65,12 @@ class CreatedTool:
             "original_sample_text": self.original_sample_text[:200],
             "adversarial_example": self.adversarial_example,
             "adversarial_expected": self.adversarial_expected,
-            "original_passed": self.original_result.passed if self.original_result else None,
-            "adversarial_passed": self.adversarial_result.passed if self.adversarial_result else None,
+            "original_passed": self.original_result.passed
+            if self.original_result
+            else None,
+            "adversarial_passed": self.adversarial_result.passed
+            if self.adversarial_result
+            else None,
             "coverage_count": len([r for r in self.coverage_results if r.passed]),
             "coverage_total": len(self.coverage_results),
         }
@@ -73,12 +79,12 @@ class CreatedTool:
 def extract_code_block(text: str) -> str | None:
     """Extract Python code from markdown code block."""
     # Try ```python first
-    match = re.search(r'```python\n(.*?)```', text, re.DOTALL)
+    match = re.search(r"```python\n(.*?)```", text, re.DOTALL)
     if match:
         return match.group(1).strip()
 
     # Try generic ```
-    match = re.search(r'```\n(.*?)```', text, re.DOTALL)
+    match = re.search(r"```\n(.*?)```", text, re.DOTALL)
     if match:
         return match.group(1).strip()
 
@@ -88,7 +94,7 @@ def extract_code_block(text: str) -> str | None:
 def extract_json_block(text: str) -> dict | None:
     """Extract JSON from response."""
     # Try ```json first
-    match = re.search(r'```json\n(.*?)```', text, re.DOTALL)
+    match = re.search(r"```json\n(.*?)```", text, re.DOTALL)
     if match:
         try:
             return json.loads(match.group(1).strip())
@@ -96,7 +102,7 @@ def extract_json_block(text: str) -> dict | None:
             pass
 
     # Try to find JSON object directly
-    match = re.search(r'\{[^{}]*\}', text, re.DOTALL)
+    match = re.search(r"\{[^{}]*\}", text, re.DOTALL)
     if match:
         try:
             return json.loads(match.group(0))
@@ -106,14 +112,16 @@ def extract_json_block(text: str) -> dict | None:
     return None
 
 
-def create_tool_for_sample(client: OllamaClient, model: str, sample: dict) -> CreatedTool | None:
+def create_tool_for_sample(
+    client: OllamaClient, model: str, sample: dict
+) -> CreatedTool | None:
     """Ask LLM to create a tool for this sample type."""
 
     prompt = f"""You are creating a reusable Python tool for detecting PII (Personal Identifiable Information).
 
 Given this example:
-Text: {sample['text']}
-Expected PII types: {sample.get('entities', [])}
+Text: {sample["text"]}
+Expected PII types: {sample.get("entities", [])}
 
 Create a Python function that can detect THIS TYPE of PII pattern.
 
@@ -150,15 +158,15 @@ def detect(text: str) -> list[dict]:
     response = client.completion(prompt, model)
 
     # Parse response
-    lines = response.strip().split('\n')
+    lines = response.strip().split("\n")
     name = None
     description = None
 
     for line in lines:
-        if line.lower().startswith('name:'):
-            name = line.split(':', 1)[1].strip().replace(' ', '_').lower()
-        elif line.lower().startswith('description:'):
-            description = line.split(':', 1)[1].strip()
+        if line.lower().startswith("name:"):
+            name = line.split(":", 1)[1].strip().replace(" ", "_").lower()
+        elif line.lower().startswith("description:"):
+            description = line.split(":", 1)[1].strip()
 
     code = extract_code_block(response)
 
@@ -169,14 +177,16 @@ def detect(text: str) -> list[dict]:
         name=name,
         description=description or "No description",
         code=code,
-        original_sample_id=sample['id'],
-        original_sample_text=sample['text'],
+        original_sample_id=sample["id"],
+        original_sample_text=sample["text"],
         adversarial_example="",
         adversarial_expected="",
     )
 
 
-def generate_adversarial(client: OllamaClient, model: str, tool: CreatedTool) -> tuple[str, str]:
+def generate_adversarial(
+    client: OllamaClient, model: str, tool: CreatedTool
+) -> tuple[str, str]:
     """Generate a near-miss adversarial example for the tool."""
 
     prompt = f"""Given this PII detection tool:
@@ -216,7 +226,7 @@ def run_tool(tool: CreatedTool, text: str, sample_id: str) -> ToolResult:
         namespace = {"__builtins__": __builtins__}
         exec(tool.code, namespace)
 
-        if 'detect' not in namespace:
+        if "detect" not in namespace:
             return ToolResult(
                 sample_id=sample_id,
                 sample_text=text,
@@ -225,7 +235,7 @@ def run_tool(tool: CreatedTool, text: str, sample_id: str) -> ToolResult:
                 passed=False,
             )
 
-        result = namespace['detect'](text)
+        result = namespace["detect"](text)
 
         # Check if it returned valid results
         passed = isinstance(result, list) and len(result) > 0
@@ -253,8 +263,15 @@ def main():
 
     parser = argparse.ArgumentParser(description="Exp009: Tool Creation Validation")
     parser.add_argument("--model", default="qwen2.5-coder:32b", help="Model to use")
-    parser.add_argument("--samples", type=int, default=10, help="Number of samples to create tools for")
-    parser.add_argument("--dataset-size", type=int, default=100, help="Dataset size for coverage testing")
+    parser.add_argument(
+        "--samples", type=int, default=10, help="Number of samples to create tools for"
+    )
+    parser.add_argument(
+        "--dataset-size",
+        type=int,
+        default=100,
+        help="Dataset size for coverage testing",
+    )
     parser.add_argument("--verbose", action="store_true", help="Verbose output")
     args = parser.parse_args()
 
@@ -336,18 +353,34 @@ def main():
 
     for tool in tqdm(created_tools, desc="Validating"):
         # Test on original sample
-        original_sample = next((s for s in samples if s['id'] == tool.original_sample_id), None)
+        original_sample = next(
+            (s for s in samples if s["id"] == tool.original_sample_id), None
+        )
         if original_sample:
-            tool.original_result = run_tool(tool, original_sample['text'], original_sample['id'])
+            tool.original_result = run_tool(
+                tool, original_sample["text"], original_sample["id"]
+            )
 
         # Test on adversarial
         if tool.adversarial_example:
-            tool.adversarial_result = run_tool(tool, tool.adversarial_example, "adversarial")
+            tool.adversarial_result = run_tool(
+                tool, tool.adversarial_example, "adversarial"
+            )
 
         if args.verbose:
-            orig_status = "PASS" if tool.original_result and tool.original_result.passed else "FAIL"
-            adv_status = "PASS" if tool.adversarial_result and not tool.adversarial_result.passed else "FAIL"
-            tqdm.write(f"  {tool.name}: original={orig_status}, adversarial={adv_status}")
+            orig_status = (
+                "PASS"
+                if tool.original_result and tool.original_result.passed
+                else "FAIL"
+            )
+            adv_status = (
+                "PASS"
+                if tool.adversarial_result and not tool.adversarial_result.passed
+                else "FAIL"
+            )
+            tqdm.write(
+                f"  {tool.name}: original={orig_status}, adversarial={adv_status}"
+            )
 
     # Phase 4: Test coverage across dataset
     print("\n" + "=" * 60)
@@ -360,9 +393,9 @@ def main():
         coverage_matrix[tool.name] = []
 
         for sample in samples:
-            result = run_tool(tool, sample['text'], sample['id'])
+            result = run_tool(tool, sample["text"], sample["id"])
             tool.coverage_results.append(result)
-            coverage_matrix[tool.name].append((sample['id'], result.passed))
+            coverage_matrix[tool.name].append((sample["id"], result.passed))
 
     # Phase 5: Analyze overlap
     print("\n" + "=" * 60)
@@ -380,7 +413,9 @@ def main():
             "match_rate": len(matching_samples) / len(samples) * 100,
         }
 
-        print(f"  {tool.name}: matches {len(matching_samples)}/{len(samples)} ({len(matching_samples)/len(samples)*100:.1f}%)")
+        print(
+            f"  {tool.name}: matches {len(matching_samples)}/{len(samples)} ({len(matching_samples) / len(samples) * 100:.1f}%)"
+        )
 
     # Generate report
     print("\n" + "=" * 60)
@@ -398,9 +433,30 @@ def main():
         "overlap_analysis": overlap_analysis,
         "summary": {
             "tools_created": len(created_tools),
-            "original_pass_rate": sum(1 for t in created_tools if t.original_result and t.original_result.passed) / len(created_tools) * 100 if created_tools else 0,
-            "adversarial_correct_rate": sum(1 for t in created_tools if t.adversarial_result and not t.adversarial_result.passed) / len(created_tools) * 100 if created_tools else 0,
-            "avg_coverage": sum(len([r for r in t.coverage_results if r.passed]) for t in created_tools) / len(created_tools) if created_tools else 0,
+            "original_pass_rate": sum(
+                1
+                for t in created_tools
+                if t.original_result and t.original_result.passed
+            )
+            / len(created_tools)
+            * 100
+            if created_tools
+            else 0,
+            "adversarial_correct_rate": sum(
+                1
+                for t in created_tools
+                if t.adversarial_result and not t.adversarial_result.passed
+            )
+            / len(created_tools)
+            * 100
+            if created_tools
+            else 0,
+            "avg_coverage": sum(
+                len([r for r in t.coverage_results if r.passed]) for t in created_tools
+            )
+            / len(created_tools)
+            if created_tools
+            else 0,
         },
     }
 
@@ -410,8 +466,12 @@ def main():
 
     print(f"\nTools created: {results['summary']['tools_created']}")
     print(f"Original sample pass rate: {results['summary']['original_pass_rate']:.1f}%")
-    print(f"Adversarial correct rate: {results['summary']['adversarial_correct_rate']:.1f}%")
-    print(f"Average coverage per tool: {results['summary']['avg_coverage']:.1f} samples")
+    print(
+        f"Adversarial correct rate: {results['summary']['adversarial_correct_rate']:.1f}%"
+    )
+    print(
+        f"Average coverage per tool: {results['summary']['avg_coverage']:.1f} samples"
+    )
     print()
     print(f"Results saved to: {output_dir}")
     print(f"Tools saved to: {tools_dir}")
@@ -422,10 +482,18 @@ def main():
     print("-" * 60)
 
     for tool in created_tools:
-        orig = "PASS" if tool.original_result and tool.original_result.passed else "FAIL"
-        adv = "CORRECT" if tool.adversarial_result and not tool.adversarial_result.passed else "WRONG"
+        orig = (
+            "PASS" if tool.original_result and tool.original_result.passed else "FAIL"
+        )
+        adv = (
+            "CORRECT"
+            if tool.adversarial_result and not tool.adversarial_result.passed
+            else "WRONG"
+        )
         coverage = len([r for r in tool.coverage_results if r.passed])
-        print(f"  {tool.name:30} | orig: {orig:4} | adv: {adv:7} | coverage: {coverage:3}/{len(samples)}")
+        print(
+            f"  {tool.name:30} | orig: {orig:4} | adv: {adv:7} | coverage: {coverage:3}/{len(samples)}"
+        )
 
 
 if __name__ == "__main__":

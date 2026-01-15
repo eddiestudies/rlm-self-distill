@@ -31,6 +31,7 @@ from self_distill.skills.registry import SkillRegistry
 @dataclass
 class TestResult:
     """Result of testing on one sample."""
+
     sentence: str
     expected: bool  # True = grammatical
     predicted: bool | None
@@ -44,6 +45,7 @@ class TestResult:
 @dataclass
 class IterationMetrics:
     """Metrics for one iteration."""
+
     iteration: int
     accuracy: float
     true_positives: int
@@ -67,16 +69,18 @@ class IterationMetrics:
 
 def extract_code_block(text: str) -> str | None:
     """Extract Python code from markdown."""
-    match = re.search(r'```python\n(.*?)```', text, re.DOTALL)
+    match = re.search(r"```python\n(.*?)```", text, re.DOTALL)
     if match:
         return match.group(1).strip()
-    match = re.search(r'```\n(.*?)```', text, re.DOTALL)
+    match = re.search(r"```\n(.*?)```", text, re.DOTALL)
     if match:
         return match.group(1).strip()
     return None
 
 
-def test_skill(skill: CodeSkill, samples: list[dict]) -> tuple[IterationMetrics, list[TestResult]]:
+def test_skill(
+    skill: CodeSkill, samples: list[dict]
+) -> tuple[IterationMetrics, list[TestResult]]:
     """Test a skill against all samples."""
     results = []
     tp = tn = fp = fn = errors = 0
@@ -88,23 +92,27 @@ def test_skill(skill: CodeSkill, samples: list[dict]) -> tuple[IterationMetrics,
         result = skill.run(sentence)
 
         if result.error:
-            results.append(TestResult(
-                sentence=sentence,
-                expected=expected,
-                predicted=None,
-                error=result.error,
-            ))
+            results.append(
+                TestResult(
+                    sentence=sentence,
+                    expected=expected,
+                    predicted=None,
+                    error=result.error,
+                )
+            )
             errors += 1
             continue
 
         # Convert output to boolean
         predicted = bool(result.output)
 
-        results.append(TestResult(
-            sentence=sentence,
-            expected=expected,
-            predicted=predicted,
-        ))
+        results.append(
+            TestResult(
+                sentence=sentence,
+                expected=expected,
+                predicted=predicted,
+            )
+        )
 
         if expected and predicted:
             tp += 1
@@ -135,45 +143,164 @@ def simple_pos_tag(sentence: str) -> str:
     import re
 
     # Common word -> POS mappings
-    determiners = {'the', 'a', 'an', 'this', 'that', 'these', 'those', 'my', 'your', 'his', 'her', 'its', 'our', 'their', 'some', 'any', 'no', 'every', 'each', 'all', 'both', 'few', 'many', 'much', 'most'}
-    pronouns = {'i', 'me', 'you', 'he', 'him', 'she', 'her', 'it', 'we', 'us', 'they', 'them', 'who', 'whom', 'what', 'which', 'that', 'myself', 'yourself', 'himself', 'herself', 'itself', 'ourselves', 'themselves'}
-    auxiliaries = {'is', 'am', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'having', 'do', 'does', 'did', 'will', 'would', 'shall', 'should', 'may', 'might', 'can', 'could', 'must'}
-    prepositions = {'in', 'on', 'at', 'to', 'for', 'with', 'by', 'from', 'of', 'about', 'into', 'through', 'during', 'before', 'after', 'above', 'below', 'between', 'under', 'over'}
-    conjunctions = {'and', 'or', 'but', 'nor', 'yet', 'so', 'for', 'because', 'although', 'while', 'if', 'when', 'unless', 'since', 'though'}
+    determiners = {
+        "the",
+        "a",
+        "an",
+        "this",
+        "that",
+        "these",
+        "those",
+        "my",
+        "your",
+        "his",
+        "her",
+        "its",
+        "our",
+        "their",
+        "some",
+        "any",
+        "no",
+        "every",
+        "each",
+        "all",
+        "both",
+        "few",
+        "many",
+        "much",
+        "most",
+    }
+    pronouns = {
+        "i",
+        "me",
+        "you",
+        "he",
+        "him",
+        "she",
+        "her",
+        "it",
+        "we",
+        "us",
+        "they",
+        "them",
+        "who",
+        "whom",
+        "what",
+        "which",
+        "that",
+        "myself",
+        "yourself",
+        "himself",
+        "herself",
+        "itself",
+        "ourselves",
+        "themselves",
+    }
+    auxiliaries = {
+        "is",
+        "am",
+        "are",
+        "was",
+        "were",
+        "be",
+        "been",
+        "being",
+        "have",
+        "has",
+        "had",
+        "having",
+        "do",
+        "does",
+        "did",
+        "will",
+        "would",
+        "shall",
+        "should",
+        "may",
+        "might",
+        "can",
+        "could",
+        "must",
+    }
+    prepositions = {
+        "in",
+        "on",
+        "at",
+        "to",
+        "for",
+        "with",
+        "by",
+        "from",
+        "of",
+        "about",
+        "into",
+        "through",
+        "during",
+        "before",
+        "after",
+        "above",
+        "below",
+        "between",
+        "under",
+        "over",
+    }
+    conjunctions = {
+        "and",
+        "or",
+        "but",
+        "nor",
+        "yet",
+        "so",
+        "for",
+        "because",
+        "although",
+        "while",
+        "if",
+        "when",
+        "unless",
+        "since",
+        "though",
+    }
 
-    words = re.findall(r'\b\w+\b', sentence.lower())
+    words = re.findall(r"\b\w+\b", sentence.lower())
     tags = []
 
     for word in words:
         if word in determiners:
-            tags.append('DET')
+            tags.append("DET")
         elif word in pronouns:
-            tags.append('PRON')
+            tags.append("PRON")
         elif word in auxiliaries:
-            tags.append('AUX')
+            tags.append("AUX")
         elif word in prepositions:
-            tags.append('PREP')
+            tags.append("PREP")
         elif word in conjunctions:
-            tags.append('CONJ')
-        elif word.endswith('ly'):
-            tags.append('ADV')
-        elif word.endswith(('ing', 'ed', 's')) and len(word) > 4:
-            tags.append('VERB')
-        elif word.endswith(('tion', 'ness', 'ment', 'ity', 'er', 'or')):
-            tags.append('NOUN')
-        elif word.endswith(('ful', 'less', 'ous', 'ive', 'able', 'ible')):
-            tags.append('ADJ')
+            tags.append("CONJ")
+        elif word.endswith("ly"):
+            tags.append("ADV")
+        elif word.endswith(("ing", "ed", "s")) and len(word) > 4:
+            tags.append("VERB")
+        elif word.endswith(("tion", "ness", "ment", "ity", "er", "or")):
+            tags.append("NOUN")
+        elif word.endswith(("ful", "less", "ous", "ive", "able", "ible")):
+            tags.append("ADJ")
         else:
-            tags.append('?')  # Unknown
+            tags.append("?")  # Unknown
 
-    return ' '.join(tags)
+    return " ".join(tags)
 
 
-def format_feedback(metrics: IterationMetrics, results: list[TestResult], max_examples: int = 5) -> str:
+def format_feedback(
+    metrics: IterationMetrics, results: list[TestResult], max_examples: int = 5
+) -> str:
     """Format test results as feedback for the model."""
     # Collect error examples
-    fps = [r for r in results if r.predicted is not None and r.predicted and not r.expected][:max_examples]
-    fns = [r for r in results if r.predicted is not None and not r.predicted and r.expected][:max_examples]
+    fps = [
+        r for r in results if r.predicted is not None and r.predicted and not r.expected
+    ][:max_examples]
+    fns = [
+        r for r in results if r.predicted is not None and not r.predicted and r.expected
+    ][:max_examples]
     errs = [r for r in results if r.error][:max_examples]
 
     feedback = f"""## Test Results (Iteration {metrics.iteration})
@@ -191,19 +318,19 @@ def format_feedback(metrics: IterationMetrics, results: list[TestResult], max_ex
     if errs:
         feedback += "\n**Runtime Errors (fix these first!):**\n"
         for r in errs:
-            feedback += f"- \"{r.sentence[:60]}...\"\n  Error: {r.error}\n"
+            feedback += f'- "{r.sentence[:60]}..."\n  Error: {r.error}\n'
 
     if fps:
         feedback += "\n**False Positives (your skill said grammatical, but these are UNGRAMMATICAL):**\n"
         for r in fps:
             pos = simple_pos_tag(r.sentence)
-            feedback += f"- \"{r.sentence}\"\n  POS: {pos}\n"
+            feedback += f'- "{r.sentence}"\n  POS: {pos}\n'
 
     if fns:
         feedback += "\n**False Negatives (your skill said ungrammatical, but these are GRAMMATICAL):**\n"
         for r in fns:
             pos = simple_pos_tag(r.sentence)
-            feedback += f"- \"{r.sentence}\"\n  POS: {pos}\n"
+            feedback += f'- "{r.sentence}"\n  POS: {pos}\n'
 
     return feedback
 
@@ -253,7 +380,9 @@ def solve(text: str) -> bool:
     return extract_code_block(response) or ""
 
 
-def refine_skill(client: OllamaClient, model: str, current_code: str, feedback: str) -> str:
+def refine_skill(
+    client: OllamaClient, model: str, current_code: str, feedback: str
+) -> str:
     """Ask model to refine the skill based on feedback."""
     prompt = f"""You are improving a grammar checking function that uses POS-based pattern matching.
 
@@ -329,27 +458,35 @@ def main():
     for i, item in enumerate(cola_train):
         if i >= args.train_size:
             break
-        train_samples.append({
-            "sentence": item.question,  # The sentence itself
-            "label": item.answer == "1",  # 1 = grammatical, 0 = ungrammatical
-        })
+        train_samples.append(
+            {
+                "sentence": item.question,  # The sentence itself
+                "label": item.answer == "1",  # 1 = grammatical, 0 = ungrammatical
+            }
+        )
 
     test_samples = []
     for i, item in enumerate(cola_dev):
         if i >= args.test_size:
             break
-        test_samples.append({
-            "sentence": item.question,
-            "label": item.answer == "1",
-        })
+        test_samples.append(
+            {
+                "sentence": item.question,
+                "label": item.answer == "1",
+            }
+        )
 
     print(f"Train: {len(train_samples)}, Test: {len(test_samples)}")
 
     # Count class distribution
     train_pos = sum(1 for s in train_samples if s["label"])
     test_pos = sum(1 for s in test_samples if s["label"])
-    print(f"Train distribution: {train_pos} grammatical / {len(train_samples) - train_pos} ungrammatical")
-    print(f"Test distribution: {test_pos} grammatical / {len(test_samples) - test_pos} ungrammatical")
+    print(
+        f"Train distribution: {train_pos} grammatical / {len(train_samples) - train_pos} ungrammatical"
+    )
+    print(
+        f"Test distribution: {test_pos} grammatical / {len(test_samples) - test_pos} ungrammatical"
+    )
 
     # Initialize
     client = OllamaClient()
@@ -405,14 +542,18 @@ def main():
             no_improvement_count += 1
 
         # Update progress
-        pbar.set_postfix({
-            "acc": f"{metrics.accuracy:.1%}",
-            "best": f"{best_accuracy:.1%}@{best_iteration}",
-            "errs": metrics.errors,
-        })
+        pbar.set_postfix(
+            {
+                "acc": f"{metrics.accuracy:.1%}",
+                "best": f"{best_accuracy:.1%}@{best_iteration}",
+                "errs": metrics.errors,
+            }
+        )
 
         if args.verbose:
-            tqdm.write(f"\nIter {i}: Accuracy={metrics.accuracy:.1%} (TP={metrics.true_positives}, TN={metrics.true_negatives}, FP={metrics.false_positives}, FN={metrics.false_negatives}, Err={metrics.errors})")
+            tqdm.write(
+                f"\nIter {i}: Accuracy={metrics.accuracy:.1%} (TP={metrics.true_positives}, TN={metrics.true_negatives}, FP={metrics.false_positives}, FN={metrics.false_negatives}, Err={metrics.errors})"
+            )
 
         # Save skill every 10 iterations
         if i % 10 == 0:
@@ -481,7 +622,9 @@ def main():
     (output_dir / "results.json").write_text(json.dumps(results, indent=2))
 
     # Print summary
-    print(f"\nBest training accuracy: {best_accuracy:.1%} at iteration {best_iteration}")
+    print(
+        f"\nBest training accuracy: {best_accuracy:.1%} at iteration {best_iteration}"
+    )
     print("\nTest Results:")
     print(f"  Accuracy: {final_metrics.accuracy:.1%}")
     print(f"  TP: {final_metrics.true_positives}, TN: {final_metrics.true_negatives}")

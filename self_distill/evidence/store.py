@@ -13,7 +13,12 @@ import numpy as np
 
 from self_distill.evidence.embeddings import EmbeddingModel
 from self_distill.evidence.vector_store import VectorStore
-from self_distill.evidence.cluster import Cluster, ClusterDetector, ClusterStats, analyze_clusters
+from self_distill.evidence.cluster import (
+    Cluster,
+    ClusterDetector,
+    ClusterStats,
+    analyze_clusters,
+)
 
 
 class EvidenceStore:
@@ -163,7 +168,9 @@ class EvidenceStore:
             return False, None
 
         embedding = self._embedder.embed(text)
-        should_create, cluster = self.cluster_detector.should_create_tool(embedding, text)
+        should_create, cluster = self.cluster_detector.should_create_tool(
+            embedding, text
+        )
 
         if not should_create or cluster is None:
             return False, None
@@ -291,6 +298,8 @@ class EvidenceStore:
         )
 
         store._vector_store = VectorStore.load(path / "vectors")
-        store._triggered_patterns = {tuple(p) for p in config.get("triggered_patterns", [])}
+        store._triggered_patterns = {
+            tuple(p) for p in config.get("triggered_patterns", [])
+        }
 
         return store

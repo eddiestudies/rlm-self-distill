@@ -19,6 +19,7 @@ from typing import Iterator, Optional
 @dataclass
 class PIIEntity:
     """A single PII entity in the text."""
+
     label: str
     value: str
     start: int
@@ -28,6 +29,7 @@ class PIIEntity:
 @dataclass
 class AI4PrivacyItem:
     """A single item from AI4Privacy dataset."""
+
     question: str
     answer: str
     source_text: str
@@ -114,7 +116,9 @@ class AI4PrivacyDataset:
             # Create question for the task
             entity_labels = [e.label for e in entities]
             question = f"Detect PII in: {row['source_text']}"
-            answer = f"Found PII: {', '.join(entity_labels)}" if entities else "No PII found"
+            answer = (
+                f"Found PII: {', '.join(entity_labels)}" if entities else "No PII found"
+            )
 
             item = AI4PrivacyItem(
                 question=question,

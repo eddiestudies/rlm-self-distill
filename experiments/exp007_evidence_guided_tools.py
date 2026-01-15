@@ -100,7 +100,9 @@ class ExperimentResult:
         return cls(**{k: v for k, v in data.items() if k in cls.__dataclass_fields__})
 
 
-def save_checkpoint(output_dir: Path, result: ExperimentResult, processed_ids: list[str], metadata: dict):
+def save_checkpoint(
+    output_dir: Path, result: ExperimentResult, processed_ids: list[str], metadata: dict
+):
     """Save checkpoint after each batch."""
     checkpoint = {
         "metadata": metadata,
@@ -114,7 +116,9 @@ def save_checkpoint(output_dir: Path, result: ExperimentResult, processed_ids: l
     return checkpoint_path
 
 
-def load_checkpoint(output_dir: Path) -> tuple[list[str], ExperimentResult, dict] | None:
+def load_checkpoint(
+    output_dir: Path,
+) -> tuple[list[str], ExperimentResult, dict] | None:
     """Load checkpoint if exists."""
     checkpoint_path = output_dir / "checkpoint.json"
     if not checkpoint_path.exists():
@@ -341,19 +345,27 @@ def run_experiment(
     # Filter to unprocessed tasks
     remaining_tasks = [t for t in tasks if t["id"] not in processed_ids]
 
-    tqdm.write(f"\nProcessing {len(remaining_tasks)} tasks ({len(processed_ids)} already done)")
+    tqdm.write(
+        f"\nProcessing {len(remaining_tasks)} tasks ({len(processed_ids)} already done)"
+    )
 
     # Run baseline sample
     if result.baseline_tokens == 0:
         baseline_sample = min(5, len(tasks))
-        for task in tqdm(tasks[:baseline_sample], desc="Baseline sample", unit="task", leave=False):
+        for task in tqdm(
+            tasks[:baseline_sample], desc="Baseline sample", unit="task", leave=False
+        ):
             prompt = f"Analyze: {task['text']}\nTask: {task['task_type']}"
             _ = client.completion(prompt, base_model)
             usage = client.get_last_usage()
-            result.baseline_tokens += usage.total_input_tokens + usage.total_output_tokens
+            result.baseline_tokens += (
+                usage.total_input_tokens + usage.total_output_tokens
+            )
 
         if baseline_sample > 0:
-            result.baseline_tokens = int(result.baseline_tokens * len(tasks) / baseline_sample)
+            result.baseline_tokens = int(
+                result.baseline_tokens * len(tasks) / baseline_sample
+            )
 
     # Process tasks with evidence guidance
     pbar = tqdm(
@@ -383,7 +395,9 @@ def run_experiment(
         if pattern_prompt:
             prompt_parts.append(f"\n## Pattern Evidence\n{pattern_prompt}")
 
-        prompt_parts.append("\nFirst check if you have an existing tool. If a pattern was detected above, strongly consider creating a reusable tool.")
+        prompt_parts.append(
+            "\nFirst check if you have an existing tool. If a pattern was detected above, strongly consider creating a reusable tool."
+        )
 
         prompt = "\n\n".join(prompt_parts)
 
@@ -391,9 +405,14 @@ def run_experiment(
         try:
             response = rlm.completion(prompt)
 
-            if hasattr(response, 'usage_summary') and response.usage_summary:
-                for model_name, usage in response.usage_summary.model_usage_summaries.items():
-                    result.rlm_tokens += usage.total_input_tokens + usage.total_output_tokens
+            if hasattr(response, "usage_summary") and response.usage_summary:
+                for (
+                    model_name,
+                    usage,
+                ) in response.usage_summary.model_usage_summaries.items():
+                    result.rlm_tokens += (
+                        usage.total_input_tokens + usage.total_output_tokens
+                    )
 
             result.tasks_processed += 1
 
@@ -410,12 +429,14 @@ def run_experiment(
         avg_time = elapsed / (i + 1)
         remaining = avg_time * (len(remaining_tasks) - i - 1)
 
-        pbar.set_postfix({
-            "done": result.tasks_processed,
-            "patterns": result.patterns_detected,
-            "tokens": f"{result.rlm_tokens:,}",
-            "eta": f"{remaining/60:.1f}m",
-        })
+        pbar.set_postfix(
+            {
+                "done": result.tasks_processed,
+                "patterns": result.patterns_detected,
+                "tokens": f"{result.rlm_tokens:,}",
+                "eta": f"{remaining / 60:.1f}m",
+            }
+        )
 
         # Checkpoint periodically
         if (i + 1) % checkpoint_interval == 0:
@@ -450,19 +471,31 @@ def generate_report(output_dir: Path, result: ExperimentResult, model: str) -> P
     styles = getSampleStyleSheet()
     story = []
 
-    title_style = ParagraphStyle('Title', parent=styles['Heading1'], fontSize=18, spaceAfter=20)
-    heading_style = ParagraphStyle('Heading', parent=styles['Heading2'], fontSize=14, spaceAfter=12)
+    title_style = ParagraphStyle(
+        "Title", parent=styles["Heading1"], fontSize=18, spaceAfter=20
+    )
+    heading_style = ParagraphStyle(
+        "Heading", parent=styles["Heading2"], fontSize=14, spaceAfter=12
+    )
 
-    story.append(Paragraph("Experiment 007: Evidence-Guided Tool Creation", title_style))
-    story.append(Paragraph(f"Model: {model}", styles['Normal']))
-    story.append(Paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}", styles['Normal']))
+    story.append(
+        Paragraph("Experiment 007: Evidence-Guided Tool Creation", title_style)
+    )
+    story.append(Paragraph(f"Model: {model}", styles["Normal"]))
+    story.append(
+        Paragraph(
+            f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}", styles["Normal"]
+        )
+    )
     story.append(Spacer(1, 20))
 
     # Results table
     story.append(Paragraph("Results Summary", heading_style))
 
     savings = result.baseline_tokens - result.rlm_tokens
-    savings_pct = (savings / result.baseline_tokens * 100) if result.baseline_tokens > 0 else 0
+    savings_pct = (
+        (savings / result.baseline_tokens * 100) if result.baseline_tokens > 0 else 0
+    )
 
     data = [
         ["Metric", "Value"],
@@ -473,18 +506,22 @@ def generate_report(output_dir: Path, result: ExperimentResult, model: str) -> P
         ["Baseline Tokens (est)", f"{result.baseline_tokens:,}"],
         ["RLM Tokens", f"{result.rlm_tokens:,}"],
         ["Token Savings", f"{savings:,} ({savings_pct:+.1f}%)"],
-        ["Duration", f"{result.duration_seconds/60:.1f} minutes"],
+        ["Duration", f"{result.duration_seconds / 60:.1f} minutes"],
         ["Clusters Found", str(result.clusters_found)],
         ["Largest Cluster", str(result.largest_cluster)],
         ["Avg Cluster Size", f"{result.avg_cluster_size:.1f}"],
     ]
 
-    table = Table(data, colWidths=[2.5*inch, 2*inch])
-    table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
-    ]))
+    table = Table(data, colWidths=[2.5 * inch, 2 * inch])
+    table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                ("GRID", (0, 0), (-1, -1), 1, colors.black),
+            ]
+        )
+    )
     story.append(table)
 
     doc.build(story)
@@ -492,12 +529,23 @@ def generate_report(output_dir: Path, result: ExperimentResult, model: str) -> P
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Experiment 007: Evidence-Guided Tool Creation")
-    parser.add_argument("--model", default="ollama/qwen2.5-coder:32b", help="Model to use")
+    parser = argparse.ArgumentParser(
+        description="Experiment 007: Evidence-Guided Tool Creation"
+    )
+    parser.add_argument(
+        "--model", default="ollama/qwen2.5-coder:32b", help="Model to use"
+    )
     parser.add_argument("--cola", type=int, default=50, help="CoLA samples")
     parser.add_argument("--pii", type=int, default=20, help="PII samples")
-    parser.add_argument("--similarity", type=float, default=0.75, help="Similarity threshold for clustering")
-    parser.add_argument("--min-cluster", type=int, default=3, help="Minimum cluster size to trigger")
+    parser.add_argument(
+        "--similarity",
+        type=float,
+        default=0.75,
+        help="Similarity threshold for clustering",
+    )
+    parser.add_argument(
+        "--min-cluster", type=int, default=3, help="Minimum cluster size to trigger"
+    )
     parser.add_argument("--verbose", action="store_true", help="Verbose output")
     parser.add_argument("--resume", type=str, help="Resume from checkpoint directory")
     args = parser.parse_args()
@@ -556,23 +604,27 @@ def main():
     for i, item in enumerate(cola_ds):
         if i >= args.cola:
             break
-        tasks.append({
-            "id": f"cola_{i}",
-            "text": item.question,
-            "task_type": "grammar",
-            "expected": item.answer,
-        })
+        tasks.append(
+            {
+                "id": f"cola_{i}",
+                "text": item.question,
+                "task_type": "grammar",
+                "expected": item.answer,
+            }
+        )
 
     pii_ds = load_dataset(DATA.PII_DETECTION, Split.DEV)
     for i, item in enumerate(pii_ds):
         if i >= args.pii:
             break
-        tasks.append({
-            "id": f"pii_{i}",
-            "text": item.question,
-            "task_type": "pii_detection",
-            "expected": item.answer,
-        })
+        tasks.append(
+            {
+                "id": f"pii_{i}",
+                "text": item.question,
+                "task_type": "pii_detection",
+                "expected": item.answer,
+            }
+        )
 
     result.tasks_total = len(tasks)
     print(f"Loaded {len(tasks)} tasks")
@@ -620,11 +672,17 @@ def main():
     print("=" * 60)
     print(f"Tasks processed: {result.tasks_processed}/{result.tasks_total}")
     print(f"Patterns detected: {result.patterns_detected}")
-    print(f"Tools created: {result.hooks_created} hooks, {result.replacements_created} replacements")
+    print(
+        f"Tools created: {result.hooks_created} hooks, {result.replacements_created} replacements"
+    )
 
-    savings_pct = ((result.baseline_tokens - result.rlm_tokens) / result.baseline_tokens * 100) if result.baseline_tokens > 0 else 0
+    savings_pct = (
+        ((result.baseline_tokens - result.rlm_tokens) / result.baseline_tokens * 100)
+        if result.baseline_tokens > 0
+        else 0
+    )
     print(f"Token savings: {savings_pct:+.1f}%")
-    print(f"Duration: {result.duration_seconds/60:.1f} minutes")
+    print(f"Duration: {result.duration_seconds / 60:.1f} minutes")
     print()
     print(f"Report: {pdf_path}")
     print(f"Results: {output_dir / 'results.json'}")

@@ -52,37 +52,37 @@ class TestCodeSkill:
     """Tests for CodeSkill class."""
 
     def test_valid_code_compiles(self):
-        code = '''
+        code = """
 def solve(text):
     return len(text)
-'''
+"""
         skill = CodeSkill("counter", code, "Counts characters")
         assert skill.is_valid
         assert skill._compile_error is None
 
     def test_missing_solve_function(self):
-        code = '''
+        code = """
 def process(text):
     return text
-'''
+"""
         skill = CodeSkill("bad", code)
         assert not skill.is_valid
         assert "solve" in skill._compile_error
 
     def test_syntax_error_in_code(self):
-        code = '''
+        code = """
 def solve(text)
     return text
-'''
+"""
         skill = CodeSkill("broken", code)
         assert not skill.is_valid
         assert "SyntaxError" in skill._compile_error
 
     def test_run_returns_result(self):
-        code = '''
+        code = """
 def solve(text):
     return text.upper()
-'''
+"""
         skill = CodeSkill("upper", code)
         result = skill.run("hello")
         assert result.success
@@ -96,10 +96,10 @@ def solve(text):
         assert "Compile error" in result.error
 
     def test_run_with_runtime_error(self):
-        code = '''
+        code = """
 def solve(text):
     return 1 / 0
-'''
+"""
         skill = CodeSkill("divzero", code)
         result = skill.run("test")
         assert not result.success
@@ -107,14 +107,14 @@ def solve(text):
         assert "ZeroDivisionError" in result.error
 
     def test_update_code_success(self):
-        code_v1 = '''
+        code_v1 = """
 def solve(text):
     return 1
-'''
-        code_v2 = '''
+"""
+        code_v2 = """
 def solve(text):
     return 2
-'''
+"""
         skill = CodeSkill("versioned", code_v1)
         assert skill.version == 1
         assert skill.run("x").output == 1
@@ -125,10 +125,10 @@ def solve(text):
         assert skill.run("x").output == 2
 
     def test_update_code_failure(self):
-        code_v1 = '''
+        code_v1 = """
 def solve(text):
     return 1
-'''
+"""
         skill = CodeSkill("versioned", code_v1)
         success = skill.update_code("invalid {{{")
         assert not success
@@ -136,10 +136,10 @@ def solve(text):
         assert not skill.is_valid
 
     def test_to_dict(self):
-        code = '''
+        code = """
 def solve(text):
     return True
-'''
+"""
         skill = CodeSkill("test_skill", code, "A test skill")
         d = skill.to_dict()
 

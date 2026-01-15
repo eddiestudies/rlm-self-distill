@@ -15,6 +15,7 @@ from typing import Any, Optional
 @dataclass
 class SkillResult:
     """Result from running a skill."""
+
     output: Any
     confidence: float = 1.0
     metadata: dict = field(default_factory=dict)

@@ -8,7 +8,6 @@ integrates correctly with skill creation and execution.
 import tempfile
 from pathlib import Path
 
-import pytest
 
 from self_distill.evidence import EvidenceStore
 from self_distill.skills.base import CodeSkill, AlwaysTrigger, PatternTrigger
@@ -37,9 +36,7 @@ class TestEvidencePatternDetection:
             store.add(f"pii_{i}", task, metadata={"type": "pii"})
 
         # Check for pattern on a new similar task
-        should_create, cluster = store.check_for_pattern(
-            "Extract SSN 777-88-9999"
-        )
+        should_create, cluster = store.check_for_pattern("Extract SSN 777-88-9999")
 
         # Pattern detection depends on embedding similarity
         # Just verify the API works - actual clustering behavior varies
@@ -68,9 +65,7 @@ class TestEvidencePatternDetection:
             store.add(f"diverse_{i}", task)
 
         # Check for pattern - should not find one
-        should_create, cluster = store.check_for_pattern(
-            "What is the weather today?"
-        )
+        should_create, cluster = store.check_for_pattern("What is the weather today?")
 
         # May or may not detect a pattern depending on embedding similarity
         # At minimum, verify the API works
@@ -137,14 +132,14 @@ class TestEvidenceSkillsIntegration:
         # If pattern detected, create a skill
         if should_create and cluster is not None:
             # Create SSN extraction skill
-            ssn_skill_code = '''
+            ssn_skill_code = """
 import re
 
 def solve(text):
     pattern = r"\\b\\d{3}-\\d{2}-\\d{4}\\b"
     matches = re.findall(pattern, text)
     return matches
-'''
+"""
             ssn_skill = CodeSkill(
                 name="ssn_extractor",
                 code=ssn_skill_code,
@@ -196,12 +191,12 @@ def solve(text):
         # Create email skill
         email_skill = CodeSkill(
             "email_extractor",
-            '''
+            """
 import re
 def solve(text):
     pattern = r"[\\w.-]+@[\\w.-]+\\.\\w+"
     return re.findall(pattern, text)
-''',
+""",
         )
         registry.register(
             email_skill,
@@ -211,12 +206,12 @@ def solve(text):
         # Create phone skill
         phone_skill = CodeSkill(
             "phone_extractor",
-            '''
+            """
 import re
 def solve(text):
     pattern = r"\\d{3}-\\d{3}-\\d{4}"
     return re.findall(pattern, text)
-''',
+""",
         )
         registry.register(
             phone_skill,
@@ -295,7 +290,9 @@ class TestRealDataScenarios:
             similarity_threshold=0.6,
             min_cluster_size=2,
         )
-        registry = SkillRegistry(confidence_threshold=0.2)  # Low threshold for single pattern match
+        registry = SkillRegistry(
+            confidence_threshold=0.2
+        )  # Low threshold for single pattern match
 
         # Simulate accumulating grammar tasks
         grammar_tasks = [
@@ -309,7 +306,7 @@ class TestRealDataScenarios:
             store.add(task_id, text, metadata={"type": "grammar"})
 
         # Create a simple grammar skill (rule-based for testing)
-        grammar_code = '''
+        grammar_code = """
 def solve(text):
     # Simple rule: check for common errors
     errors = []
@@ -325,12 +322,14 @@ def solve(text):
         "is_grammatical": len(errors) == 0,
         "errors": errors
     }
-'''
+"""
         grammar_skill = CodeSkill("grammar_checker", grammar_code)
         # Use threshold=1 so any single pattern match activates
         registry.register(
             grammar_skill,
-            PatternTrigger("grammar", [r"grammar", r"grammatical", r"correct"], threshold=1),
+            PatternTrigger(
+                "grammar", [r"grammar", r"grammatical", r"correct"], threshold=1
+            ),
         )
 
         # Test - "grammatical" matches one pattern
@@ -345,7 +344,7 @@ def solve(text):
         registry = SkillRegistry(confidence_threshold=0.3)
 
         # Create PII detection skill
-        pii_code = '''
+        pii_code = """
 import re
 
 def solve(text):
@@ -367,7 +366,7 @@ def solve(text):
         "has_pii": len(pii_found) > 0,
         "pii_entities": pii_found
     }
-'''
+"""
         pii_skill = CodeSkill("pii_detector", pii_code)
         registry.register(
             pii_skill,
