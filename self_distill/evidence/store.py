@@ -5,6 +5,7 @@ Combines embeddings, vector storage, and cluster detection into
 a simple API for tracking tasks and detecting patterns.
 """
 
+import json
 from pathlib import Path
 from typing import Optional
 
@@ -249,8 +250,6 @@ class EvidenceStore:
         Args:
             path: Directory to save to.
         """
-        import json
-
         path = Path(path)
         path.mkdir(parents=True, exist_ok=True)
 
@@ -279,8 +278,6 @@ class EvidenceStore:
         Returns:
             Loaded EvidenceStore instance.
         """
-        import json
-
         path = Path(path)
 
         with open(path / "config.json") as f:

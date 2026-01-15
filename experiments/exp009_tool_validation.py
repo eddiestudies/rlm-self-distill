@@ -17,17 +17,12 @@ adding optimization complexity.
 
 import json
 import re
-import sys
-import traceback
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
 from tqdm import tqdm
-
-# Add project root to path
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from self_distill.clients.ollama_client import OllamaClient
 from self_distill.datasets import load_ai4privacy
@@ -97,7 +92,7 @@ def extract_json_block(text: str) -> dict | None:
     if match:
         try:
             return json.loads(match.group(1).strip())
-        except:
+        except json.JSONDecodeError:
             pass
 
     # Try to find JSON object directly
@@ -105,7 +100,7 @@ def extract_json_block(text: str) -> dict | None:
     if match:
         try:
             return json.loads(match.group(0))
-        except:
+        except json.JSONDecodeError:
             pass
 
     return None

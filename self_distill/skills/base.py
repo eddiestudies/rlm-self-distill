@@ -5,10 +5,11 @@ Skills are functions that solve problems.
 Triggers determine when to activate a skill.
 """
 
-from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from typing import Any, Callable, Optional
 import re
+from abc import ABC, abstractmethod
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from typing import Any, Optional
 
 
 @dataclass

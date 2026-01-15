@@ -26,10 +26,9 @@ Features:
 import argparse
 import json
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 from tqdm import tqdm
 from reportlab.lib import colors
@@ -37,13 +36,11 @@ from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.platypus import (
-    SimpleDocTemplate,
     Paragraph,
+    SimpleDocTemplate,
     Spacer,
     Table,
     TableStyle,
-    Preformatted,
-    PageBreak,
 )
 
 from self_distill.clients.ollama_client import OllamaClient

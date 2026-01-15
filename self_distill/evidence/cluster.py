@@ -5,7 +5,6 @@ Detects when multiple similar tasks have been seen, indicating
 a pattern that could benefit from tool creation.
 """
 
-import random
 from dataclasses import dataclass, field
 from typing import Optional
 

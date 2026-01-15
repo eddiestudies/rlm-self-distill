@@ -16,18 +16,15 @@ Architecture:
 
 import json
 import re
-import sys
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
 from tqdm import tqdm
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
 from self_distill.clients.ollama_client import OllamaClient
 from self_distill.datasets import CoLADataset, Split
-from self_distill.skills.base import CodeSkill, AlwaysTrigger
+from self_distill.skills.base import AlwaysTrigger, CodeSkill
 from self_distill.skills.registry import SkillRegistry
 
 
@@ -427,7 +424,7 @@ def main():
             break
 
         if no_improvement_count >= 15:
-            tqdm.write(f"\nNo improvement for 15 iterations, stopping early.")
+            tqdm.write("\nNo improvement for 15 iterations, stopping early.")
             break
 
         # Generate feedback and refine
@@ -485,7 +482,7 @@ def main():
 
     # Print summary
     print(f"\nBest training accuracy: {best_accuracy:.1%} at iteration {best_iteration}")
-    print(f"\nTest Results:")
+    print("\nTest Results:")
     print(f"  Accuracy: {final_metrics.accuracy:.1%}")
     print(f"  TP: {final_metrics.true_positives}, TN: {final_metrics.true_negatives}")
     print(f"  FP: {final_metrics.false_positives}, FN: {final_metrics.false_negatives}")

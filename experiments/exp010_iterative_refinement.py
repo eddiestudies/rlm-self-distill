@@ -16,15 +16,11 @@ Tracks precision/recall/F1 over iterations to see if model learns.
 
 import json
 import re
-import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 from tqdm import tqdm
-
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from self_distill.clients.ollama_client import OllamaClient
 from self_distill.datasets import load_ai4privacy
@@ -395,7 +391,7 @@ def main():
             break
 
         if i > 20 and all(m.f1 <= best_f1 for m in all_metrics[-20:]):
-            tqdm.write(f"\nNo improvement for 20 iterations, stopping early.")
+            tqdm.write("\nNo improvement for 20 iterations, stopping early.")
             break
 
         # Generate feedback and refine

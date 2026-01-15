@@ -74,18 +74,16 @@ class EmbeddingModel:
         Returns:
             numpy array of shape (dimension,)
         """
-        if use_cache and self.cache_dir:
-            text_hash = self._text_hash(text)
-            cache_path = self._cache_path(text_hash)
-            if cache_path and cache_path.exists():
-                return np.load(cache_path)
+        text_hash = self._text_hash(text) if use_cache and self.cache_dir else None
+        cache_path = self._cache_path(text_hash) if text_hash else None
+
+        if cache_path and cache_path.exists():
+            return np.load(cache_path)
 
         embedding = self.model.encode(text, convert_to_numpy=True)
 
-        if use_cache and self.cache_dir:
-            cache_path = self._cache_path(text_hash)
-            if cache_path:
-                np.save(cache_path, embedding)
+        if cache_path:
+            np.save(cache_path, embedding)
 
         return embedding
 
