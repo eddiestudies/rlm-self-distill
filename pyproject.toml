@@ -12,6 +12,9 @@ dependencies = [
     "mlflow>=2.0",
     "reportlab>=4.0",
     "tqdm>=4.67.1",
+    "sentence-transformers>=2.2",
+    "faiss-cpu>=1.7",
+    "datasets>=4.4.2",
 ]
 
 [dependency-groups]
